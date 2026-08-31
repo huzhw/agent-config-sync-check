@@ -59,6 +59,7 @@ agent-config-sync-check/
 ├── SKILL.md              ← 技能指令（触发词、检查流程、修复规则、红线）
 ├── README.md             ← 本文档
 ├── JUNCTION说明.md        ← 四端 junction 指向关系与回滚方法
+├── HOOKS说明.md           ← 四端防护能力对照（hooks/规则/插件，能力对齐实现各异）
 ├── .gitignore            ← 排除 logs/
 ├── sync-config.json      ← 四端路径与开关、硬链接组路径、README 标记
 ├── logs/                 ← 检查日志（不入 git）

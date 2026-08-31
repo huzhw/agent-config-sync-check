@@ -81,6 +81,8 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 
 `sync-config.json`：四端路径与开关（`skillsEnabled`）、硬链接组路径、README 标记、红线目录、计划任务名。以后新增第 5 端：`agents` 数组加一条即可；某端暂时不想管：把它的 `skillsEnabled` 改 `false`。
 
+四端防护钩子（hooks/规则/插件）的能力对照与配置位置见本目录 `HOOKS说明.md`；脚本事实源与分发关系见 `coding-rules\SYNC说明.md` 第三节。
+
 ## 新增 skill 上架流程（用户说"上架技能 / 新增技能"触发）
 
 环境常量：仓库 `F:\idea-workspase-skills`，GitHub 账号 `huzhw`，远端 `https://github.com/huzhw/<skill-name>.git`，运行时 Windows PowerShell 5.1（无 pwsh 7）。
