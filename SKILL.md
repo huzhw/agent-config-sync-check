@@ -35,7 +35,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
   pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\sync-check.ps1" -Fix
   ```
 
-- **看最近一次定时检查**：读 `agent-config-sync-check\logs\` 下最新日志（每日 09:00 计划任务自动跑）
+- **看最近一次检查**：读 `agent-config-sync-check\logs\sync-check.log` 最新记录（手动运行 skill 时写入；默认不装定时任务，需要时按 README「每日定时（可选）」建）
 - 退出码：`0` = 全绿；`1` = 仍存在问题
 
 ## 检查项（8 条）
