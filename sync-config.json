@@ -1,0 +1,31 @@
+{
+  "repo": "F:\\idea-workspase-skills",
+  "excludeDirs": [".idea", "scripts", ".system", "logs"],
+  "agents": [
+    { "name": "claude", "home": "C:\\Users\\Administrator\\.claude", "rulesFile": "CLAUDE.md", "skillsEnabled": true },
+    { "name": "dsh",    "home": "C:\\Users\\Administrator\\.dsh",    "rulesFile": "AGENTS.md", "skillsEnabled": true },
+    { "name": "codex",  "home": "C:\\Users\\Administrator\\.codex",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
+    { "name": "zcode",  "home": "C:\\Users\\Administrator\\.zcode",  "rulesFile": "AGENTS.md", "skillsEnabled": true }
+  ],
+  "rulesHardlink": {
+    "enabled": true,
+    "paths": [
+      "C:\\Users\\Administrator\\.claude\\CLAUDE.md",
+      "C:\\Users\\Administrator\\.dsh\\AGENTS.md",
+      "C:\\Users\\Administrator\\.codex\\AGENTS.md",
+      "C:\\Users\\Administrator\\.zcode\\AGENTS.md"
+    ]
+  },
+  "readme": {
+    "enabled": true,
+    "path": "F:\\idea-workspase-skills\\README.md",
+    "beginMark": "<!-- sync-check:skills BEGIN -->",
+    "endMark": "<!-- sync-check:skills END -->",
+    "sectionTitle": "## 技能列表（{N} 个，由 agent-config-sync-check 自动维护，勿手改本区块）"
+  },
+  "redlineDirs": ["coding-rules"],
+  "task": {
+    "name": "agent-config-sync-check",
+    "dailyTime": "09:00"
+  }
+}
