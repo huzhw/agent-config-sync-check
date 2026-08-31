@@ -21,7 +21,42 @@
     "path": "F:\\idea-workspase-skills\\README.md",
     "beginMark": "<!-- sync-check:skills BEGIN -->",
     "endMark": "<!-- sync-check:skills END -->",
-    "sectionTitle": "## 技能列表（{N} 个，由 agent-config-sync-check 自动维护，勿手改本区块）"
+    "sectionTitle": "## 技能列表（{N} 个，由 agent-config-sync-check 自动维护，勿手改本区块）",
+    "relatedSectionTitle": "## 相关技能",
+    "relatedLineFormat": "- [{0}](https://github.com/huzhw/{1})：{2}"
+  },
+  "junctionDoc": {
+    "enabled": true,
+    "fileName": "JUNCTION说明.md",
+    "templatePath": "F:\\idea-workspase-skills\\agent-config-sync-check\\templates\\JUNCTION-template.md",
+    "tableRowFormat": "| 全局路径（junction，{0}） | `{1}` |",
+    "checkCmdFormat": "cmd /c dir \"C:\\Users\\Administrator\\.{0}\\skills\" | findstr {1}",
+    "rollbackCmdFormat": "rd \"C:\\Users\\Administrator\\.{0}\\skills\\{1}\""
+  },
+  "githubRepos": {
+    "agent-config-sync-check": "agent-config-sync-check",
+    "claude-code-token-3000": "claude-code-token-3000-skill",
+    "git-commit": "git-commit-skill",
+    "code-check": "code-check-skill",
+    "daily-merge-gitlab-excel": "daily-merge-gitlab-excel-skill",
+    "daily-record-gitlab-md": "daily-record-gitlab-md-skill",
+    "deepseek-harness-settings-curator": "deepseek-harness-settings-curator",
+    "reread-rules": "reread-rules-skill",
+    "coding-rules": "coding-rules"
+  },
+  "repoRoots": {
+    "git-commit": "F:\\idea-workspase-skills\\claude-git-commit-skill"
+  },
+  "relatedSkills": {
+    "agent-config-sync-check": "四端同步守卫：链接/硬链接/README 同步检查与修复",
+    "claude-code-token-3000": "Claude Code API Token 切换",
+    "git-commit": "Git 提交规范",
+    "code-check": "增量代码隐患检查",
+    "daily-merge-gitlab-excel": "日报合并",
+    "daily-record-gitlab-md": "日报记录",
+    "deepseek-harness-settings-curator": "DSH 模型配置梳理",
+    "reread-rules": "重载 CLAUDE.md / AGENTS.md 规则",
+    "coding-rules": "编码规则库（独立仓库，非 skill）"
   },
   "redlineDirs": ["coding-rules"],
   "task": {

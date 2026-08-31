@@ -299,6 +299,246 @@ function Test-Readme {
     if ($extra.Count -gt 0) { Add-Issue 'README' 'ERROR' 'ReadmeExtraEntries' "extra: $($extra -join ', ')" $true }
 }
 
+# ---------- checks 7 + 8: JUNCTION docs / README related links ----------
+# All Chinese literals (file name, section title, line formats) come from
+# sync-config.json; the doc template lives in templates\JUNCTION-template.md.
+# This source stays ASCII-only.
+
+$script:Domains = @('claude', 'dsh', 'codex', 'zcode')
+$script:EndLabels = @{ claude = 'Claude Code'; dsh = 'DSH'; codex = 'Codex'; zcode = 'Zcode' }
+
+# repo root of a skill (git-commit: repo root != skill dir)
+function Get-RepoRootDir {
+    param([object]$Cfg, [string]$Name)
+    if ($Cfg.PSObject.Properties.Name -contains 'repoRoots') {
+        $p = $Cfg.repoRoots.PSObject.Properties[$Name]
+        if ($p) { return [string]$p.Value }
+    }
+    return (Join-Path $Cfg.repo $Name)
+}
+
+function Test-JunctionDocs {
+    param([object]$Cfg, [hashtable]$Expected)
+    if (-not $Cfg.junctionDoc.enabled) { return }
+    $fileName = [string]$Cfg.junctionDoc.fileName
+    # family sub-skills (dir nested under another skill's dir) share the family doc: skip
+    $skillDirs = @($Expected.Values | ForEach-Object { Normalize-Path $_.Dir })
+    foreach ($name in ($Expected.Keys | Sort-Object)) {
+        $dir = $Expected[$name].Dir
+        if ($skillDirs -contains (Normalize-Path (Split-Path -Parent $dir))) { continue }
+        $docPath = Join-Path $dir $fileName
+        if (-not (Test-Path -LiteralPath $docPath)) {
+            Add-Issue 'docs' 'ERROR' 'JunctionDocMissing' "${name}:$fileName missing at $docPath" $true -LinkName $name -ExpectedDir $docPath
+            continue
+        }
+        $text = Get-Content -LiteralPath $docPath -Raw -Encoding UTF8
+        # stale skill name in doc (renamed skill left old token behind)
+        $bad = @()
+        foreach ($m in [regex]::Matches($text, '\\skills\\([a-z0-9\-]+)|idea-workspase-skills\\([a-z0-9\-]+)')) {
+            $tok = $m.Groups[1].Value
+            if (-not $tok) { $tok = $m.Groups[2].Value }
+            if ($tok -and $tok -ne $name -and $name.EndsWith($tok)) { $bad += $tok }
+        }
+        $bad = @($bad | Select-Object -Unique)
+        if ($bad.Count -gt 0) {
+            Add-Issue 'docs' 'ERROR' 'JunctionDocStaleName' "${name}:doc uses stale name '$($bad -join ', ')' (actual: $name)" $true -LinkName $name -ExpectedDir $docPath
+        }
+        # polluted doc: a path token matching no known skill name (e.g. stacked
+        # prefixes left by a bad rename) -> rebuild from template.
+        # Context rules keep prose and backup paths from false-positiving:
+        #   \skills\X / findstr X      -> X must be a known skill name
+        #   idea-workspase-skills\X    -> X may be any repo subdirectory (repo dirs,
+        #                                 backup dirs like _skills_backup_*) or a GitHub repo name
+        $knownSet = @{}
+        foreach ($k in @($Expected.Keys) + @($Cfg.relatedSkills.PSObject.Properties.Name)) { $knownSet[$k] = $true }
+        if (-not $script:RepoDirNames) {
+            $script:RepoDirNames = @{}
+            foreach ($di in (Get-ChildItem -LiteralPath $Cfg.repo -Directory)) { $script:RepoDirNames[$di.Name] = $true }
+            foreach ($k in $Cfg.githubRepos.PSObject.Properties) { $script:RepoDirNames[[string]$k.Value] = $true }
+        }
+        $polluted = @()
+        foreach ($m in [regex]::Matches($text, '\\skills\\([a-z0-9\-]+)|idea-workspase-skills\\([a-z0-9\-]+)|findstr\s+([a-z0-9\-]+)')) {
+            $tok = $m.Groups[1].Value; $ctx = 1
+            if (-not $tok) { $tok = $m.Groups[2].Value; $ctx = 2 }
+            if (-not $tok) { $tok = $m.Groups[3].Value; $ctx = 3 }
+            if (-not $tok) { continue }
+            if ($ctx -eq 2) {
+                if (-not $script:RepoDirNames.ContainsKey($tok)) { $polluted += $tok }
+            } elseif (-not $knownSet.ContainsKey($tok)) {
+                $polluted += $tok
+            }
+        }
+        $polluted = @($polluted | Select-Object -Unique)
+        if ($polluted.Count -gt 0) {
+            Add-Issue 'docs' 'ERROR' 'JunctionDocPolluted' "${name}: doc has unknown path tokens '$($polluted -join ', ')' - polluted by a bad rename, rebuild needed" $true -LinkName $name -ExpectedDir $docPath
+        }
+        $missingEnds = @()
+        foreach ($a in $Cfg.agents) {
+            if (-not $a.skillsEnabled) { continue }
+            $needle = $a.home + '\skills\' + $name
+            if ($text -notlike "*$needle*") { $missingEnds += $a.name }
+        }
+        if ($missingEnds.Count -gt 0) {
+            Add-Issue 'docs' 'ERROR' 'JunctionDocMissingEnds' "${name}:doc missing ends: $($missingEnds -join ', ')" $true -LinkName $name -ExpectedDir $docPath
+        }
+    }
+}
+
+function Test-RelatedLinks {
+    param([object]$Cfg, [hashtable]$Expected)
+    $title = [string]$Cfg.readme.relatedSectionTitle
+    if (-not $title) { return }
+    $skillDirs = @($Expected.Values | ForEach-Object { Normalize-Path $_.Dir })
+    foreach ($name in ($Expected.Keys | Sort-Object)) {
+        # family sub-skills have no own README: skip
+        $dir = $Expected[$name].Dir
+        if ($skillDirs -contains (Normalize-Path (Split-Path -Parent $dir))) { continue }
+        $root = Get-RepoRootDir $Cfg $name
+        $rp = Join-Path $root 'README.md'
+        if (-not (Test-Path -LiteralPath $rp)) {
+            Add-Issue 'docs' 'WARN' 'ReadmeFileMissing' "${name}:README.md missing at $rp (write it per the 7-section template)" $false -LinkName $name
+            continue
+        }
+        $text = Get-Content -LiteralPath $rp -Raw -Encoding UTF8
+        $idx = $text.IndexOf($title)
+        if ($idx -lt 0) {
+            Add-Issue 'docs' 'WARN' 'RelatedSectionMissing' "${name}:README has no related-skills section" $false -LinkName $name
+            continue
+        }
+        $next = $text.IndexOf("`n## ", $idx)
+        if ($next -lt 0) { $next = $text.Length }
+        $sec = $text.Substring($idx, $next - $idx)
+        $missing = @()
+        foreach ($other in $Cfg.relatedSkills.PSObject.Properties.Name) {
+            if ($other -eq $name) { continue }
+            $repoOf = [string]$Cfg.githubRepos.$other
+            if (-not $repoOf) { continue }
+            if ($sec -notlike "*huzhw/$repoOf)*") { $missing += $other }
+        }
+        if ($missing.Count -gt 0) {
+            Add-Issue 'docs' 'ERROR' 'RelatedLinksMissing' "${name}:related links missing: $($missing -join ', ')" $true -LinkName $name
+        }
+    }
+}
+
+# insert missing per-end lines into one block (table rows / findstr lines / rd lines)
+function Ensure-Block {
+    param($Lines, [scriptblock]$IsLine, [hashtable]$NewLines)
+    $idxs = @()
+    for ($i = 0; $i -lt $Lines.Count; $i++) { if (& $IsLine $Lines[$i]) { $idxs += $i } }
+    if ($idxs.Count -eq 0) { return $false }
+    $present = @()
+    foreach ($i in $idxs) {
+        foreach ($d in $script:Domains) {
+            if ($Lines[$i] -like "*.$d\skills*") { $present += $d }
+        }
+    }
+    $need = @($script:Domains | Where-Object { $present -notcontains $_ })
+    if ($need.Count -eq 0) { return $false }
+    $insertAt = $idxs[$idxs.Count - 1]
+    foreach ($d in $need) {
+        $insertAt++
+        $Lines.Insert($insertAt, $NewLines[$d])
+    }
+    return $true
+}
+
+function Fix-JunctionDoc {
+    param([object]$Cfg, [string]$Name, [string]$DocPath, [switch]$Rebuild)
+    $fileName = [string]$Cfg.junctionDoc.fileName
+    $docPath = $DocPath
+    if (-not $docPath) { $docPath = Join-Path (Join-Path $Cfg.repo $Name) $fileName }
+    if ($Rebuild -or -not (Test-Path -LiteralPath $docPath)) {
+        $tpl = Get-Content -LiteralPath ([string]$Cfg.junctionDoc.templatePath) -Raw -Encoding UTF8
+        Write-NoBomUtf8 -Path $docPath -Text ($tpl.Replace('{NAME}', $Name))
+        return
+    }
+    $text = Get-Content -LiteralPath $docPath -Raw -Encoding UTF8
+    # 1. stale token -> actual name.
+    #    tok is a SUFFIX of name (e.g. settings-curator vs deepseek-harness-settings-curator),
+    #    so a naive String.Replace would re-match its own output and stack prefixes.
+    #    Idempotent approach: collapse repeated-prefix damage, then anchor with a
+    #    negative lookbehind so already-fixed text never matches again.
+    $seen = @{}
+    foreach ($m in [regex]::Matches($text, '\\skills\\([a-z0-9\-]+)|idea-workspase-skills\\([a-z0-9\-]+)')) {
+        $tok = $m.Groups[1].Value
+        if (-not $tok) { $tok = $m.Groups[2].Value }
+        if ($tok -and $tok -ne $Name -and $Name.EndsWith($tok)) { $seen[$tok] = $true }
+    }
+    foreach ($tok in $seen.Keys) {
+        $prefix = $Name.Substring(0, $Name.Length - $tok.Length)
+        if ($prefix) {
+            $text = [regex]::Replace($text, "(?:$prefix)+$tok", $Name)
+            $text = [regex]::Replace($text, "(?<!$prefix)$tok", $Name)
+        } else {
+            $text = $text.Replace($tok, $Name)
+        }
+    }
+    # 2. ensure four-end rows in table / check block / rollback block
+    $agents = @($Cfg.agents | Where-Object { $_.skillsEnabled })
+    $tableFmt = [string]$Cfg.junctionDoc.tableRowFormat
+    $checkFmt = [string]$Cfg.junctionDoc.checkCmdFormat
+    $rbFmt = [string]$Cfg.junctionDoc.rollbackCmdFormat
+
+    $tableLines = @{}; $checkLines = @{}; $rbLines = @{}
+    foreach ($d in $script:Domains) {
+        # NOTE: do not name this $home - HOME is a read-only automatic variable
+        $endHome = "C:\Users\Administrator\.$d"
+        if ($agents | Where-Object { $_.name -eq $d }) {
+            $tableLines[$d] = $tableFmt -f $script:EndLabels[$d], "$endHome\skills\$Name"
+            $checkLines[$d] = $checkFmt -f $d, $Name
+            $rbLines[$d] = $rbFmt -f $d, $Name
+        }
+    }
+    $lines = [System.Collections.Generic.List[string]](($text -split "`r?`n"))
+    $null = Ensure-Block $lines { param($s) $s.TrimStart().StartsWith('|') -and $s -like "*\skills\$Name*" } $tableLines
+    $null = Ensure-Block $lines { param($s) $s -like "*findstr $Name*" } $checkLines
+    $null = Ensure-Block $lines { param($s) $s.TrimStart().StartsWith('rd ') -and $s -like "*\skills\$Name*" } $rbLines
+    Write-NoBomUtf8 -Path $docPath -Text ($lines -join "`r`n")
+}
+
+function Fix-RelatedLinks {
+    param([object]$Cfg, [string]$Name)
+    $root = Get-RepoRootDir $Cfg $Name
+    $rp = Join-Path $root 'README.md'
+    if (-not (Test-Path -LiteralPath $rp)) { return }
+    $text = Get-Content -LiteralPath $rp -Raw -Encoding UTF8
+    $title = [string]$Cfg.readme.relatedSectionTitle
+    $idx = $text.IndexOf($title)
+    if ($idx -lt 0) { return }
+    $fmt = [string]$Cfg.readme.relatedLineFormat
+    $next = $text.IndexOf("`n## ", $idx)
+    if ($next -lt 0) { $next = $text.Length }
+    $sec = $text.Substring($idx, $next - $idx)
+    $newLines = @()
+    foreach ($other in ($Cfg.relatedSkills.PSObject.Properties.Name | Sort-Object)) {
+        if ($other -eq $Name) { continue }
+        $repoOf = [string]$Cfg.githubRepos.$other
+        if (-not $repoOf) { continue }
+        if ($sec -notlike "*huzhw/$repoOf)*") {
+            $newLines += ($fmt -f $other, $repoOf, ([string]$Cfg.relatedSkills.$other))
+        }
+    }
+    if ($newLines.Count -eq 0) { return }
+    $lines = [System.Collections.Generic.List[string]](($text -split "`r?`n"))
+    $titleLine = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i].StartsWith($title)) { $titleLine = $i; break }
+    }
+    if ($titleLine -lt 0) { return }
+    $lastItem = $titleLine
+    for ($i = $titleLine + 1; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match '^## ') { break }
+        if ($lines[$i] -match '^\s*-\s*\[') { $lastItem = $i }
+    }
+    $ins = $lastItem
+    foreach ($nl in $newLines) {
+        $ins++
+        $lines.Insert($ins, $nl)
+    }
+    Write-NoBomUtf8 -Path $rp -Text ($lines -join "`r`n")
+}
+
 # ---------- fixes ----------
 
 # Non-recursive delete of a junction - NEVER recurses into the target
@@ -422,6 +662,32 @@ function Apply-Fixes {
                     Write-Host "  [FIXED] README: regenerated skill-list section"
                     $script:Fixed++
                 }
+                'JunctionDocMissing' {
+                    Fix-JunctionDoc $Cfg $iss.LinkName $iss.ExpectedDir
+                    Write-Host "  [FIXED] $($iss.LinkName): created JUNCTION doc from template"
+                    $script:Fixed++
+                }
+                'JunctionDocPolluted' {
+                    # original text is recoverable from git HEAD, no backup needed
+                    Fix-JunctionDoc $Cfg $iss.LinkName $iss.ExpectedDir -Rebuild
+                    Write-Host "  [FIXED] $($iss.LinkName): rebuilt polluted JUNCTION doc from template"
+                    $script:Fixed++
+                }
+                'JunctionDocStaleName' {
+                    Fix-JunctionDoc $Cfg $iss.LinkName $iss.ExpectedDir
+                    Write-Host "  [FIXED] $($iss.LinkName): replaced stale names in JUNCTION doc"
+                    $script:Fixed++
+                }
+                'JunctionDocMissingEnds' {
+                    Fix-JunctionDoc $Cfg $iss.LinkName $iss.ExpectedDir
+                    Write-Host "  [FIXED] $($iss.LinkName): added missing ends in JUNCTION doc"
+                    $script:Fixed++
+                }
+                'RelatedLinksMissing' {
+                    Fix-RelatedLinks $Cfg $iss.LinkName
+                    Write-Host "  [FIXED] $($iss.LinkName): filled missing related links in README"
+                    $script:Fixed++
+                }
                 default {
                     # not fixable by design
                 }
@@ -457,6 +723,8 @@ function Invoke-AllChecks {
     }
     Test-RulesHardlink $Cfg
     Test-Readme $Cfg $Expected
+    Test-JunctionDocs $Cfg $Expected
+    Test-RelatedLinks $Cfg $Expected
 }
 
 Invoke-AllChecks -Cfg $cfg -Expected $expected -Found $found
