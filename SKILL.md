@@ -57,7 +57,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 ## 修复规则（-Fix 模式）
 
 **自动修**（机械性问题）：
-- 漏挂 → `New-Item -ItemType Junction` 补建，链接名 = frontmatter `name`
+- 漏挂 → `cmd /c "mklink /J <端skills路径>\<name> <仓库skill目录>"` 补建（PS 5.1 无 `New-Item -ItemType Junction`），链接名 = frontmatter `name`
 - 死链 / 多余仓库链接 / 红线链接 → **非递归**拆链接点（`[IO.Directory]::Delete($path, $false)`）
 - README 区块与实际不符 → 按 BEGIN/END 标记重新生成区块，标记外内容不动
 - JUNCTION说明.md 缺失 → 按 `templates\JUNCTION-template.md` 生成（`{NAME}` 占位替换）
@@ -136,6 +136,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 
   当前标准列表：
   ```markdown
+  - [agent-config-sync-check](https://github.com/huzhw/agent-config-sync-check)：四端同步守卫：链接/硬链接/README 同步检查与修复
   - [git-commit](https://github.com/huzhw/git-commit-skill)：Git 提交规范
   - [daily-record-gitlab-md](https://github.com/huzhw/daily-record-gitlab-md-skill)：日报记录
   - [daily-merge-gitlab-excel](https://github.com/huzhw/daily-merge-gitlab-excel-skill)：日报合并
@@ -144,4 +145,5 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
   - [deepseek-harness-settings-curator](https://github.com/huzhw/deepseek-harness-settings-curator)：DSH 模型配置梳理
   - [reread-rules](https://github.com/huzhw/reread-rules-skill)：重载 CLAUDE.md / AGENTS.md 规则
   - [coding-rules](https://github.com/huzhw/coding-rules)：编码规则库（独立仓库，非 skill）
+  - [service-manager](https://github.com/huzhw/service-manager)：服务管理器（关联仓库，非 skill）
   ```
