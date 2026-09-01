@@ -386,6 +386,11 @@ function Add-SshRegistration {
                 $out = & $py -c $code $file 2>&1
                 if (($out | Out-String) -notlike '*TOML_OK*') { throw "toml validation failed after append: $out" }
             }
+            'zcode-json' {
+                $helper = Join-Path $script:ScriptDir 'register-zcode.js'
+                $out = & node $helper $file $name ([string]$c.command) $launcher "--config=$cfgPath" 2>&1
+                if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*ZCODE_REGISTER_OK*') { throw "zcode register failed: $out" }
+            }
             default { throw "unsupported registration type: $($end.type)" }
         }
         # backup is kept on purpose (*.bak-sshmcp-* never enters git)
@@ -497,6 +502,26 @@ function Test-SshMcpRegistration {
                     Add-Issue $agent 'WARN' 'SshMcpStalePath' "[mcp_servers.$name] points elsewhere (manual review)" $false
                 }
             }
+            'zcode-json' {
+                $json = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json
+                $srvObj = $null
+                if ($json.mcp -and $json.mcp.servers) {
+                    $sp = $json.mcp.servers.PSObject.Properties[$name]
+                    if ($sp) { $srvObj = $sp.Value }
+                }
+                if (-not $srvObj) {
+                    Add-Issue $agent 'ERROR' 'SshMcpNotRegistered' "no mcp.servers.$name in $file" ([bool]$end.fixable) -LinkName $endName
+                    continue
+                }
+                if ([string]$srvObj.command -eq $command -and @($srvObj.args | ForEach-Object { [string]$_ }) -contains $launcherPath) {
+                    $argsText = @($srvObj.args | ForEach-Object { [string]$_ }) -join ' '
+                    if ($argsText -notlike "*--config=$cfgPath*") {
+                        Add-Issue $agent 'ERROR' 'SshMcpLegacyRegistration' "mcp.servers.$name launcher args point elsewhere: $argsText" ([bool]$end.fixable) -LinkName $endName
+                    }
+                    continue
+                }
+                Add-Issue $agent 'ERROR' 'SshMcpLegacyRegistration' "mcp.servers.$name is not in launcher form (command=$([string]$srvObj.command))" ([bool]$end.fixable) -LinkName $endName
+            }
             default {
                 Add-Issue $agent 'WARN' 'SshRegUnsupported' "registration type '$($end.type)' not supported (skipped)" $false
             }
@@ -554,7 +579,22 @@ for k, v in ms.items():
     out[k] = {"command": (v.get("command") or ""), "args": [str(a) for a in (v.get("args") or [])]}
 print(json.dumps(out))
 '@
-    return @($js, $py)
+    $zjs = Join-Path $script:LogDir 'parse-zcode.js'
+    Write-NoBomUtf8 -Path $zjs -Text @'
+// usage: node parse-zcode.js <config.json>
+const fs = require("fs");
+const d = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const ms = (d.mcp && d.mcp.servers) || {};
+const out = {};
+for (const k of Object.keys(ms)) {
+  out[k] = {
+    command: ms[k].command ? String(ms[k].command) : "",
+    args: (ms[k].args || []).map(String)
+  };
+}
+console.log(JSON.stringify(out));
+'@
+    return @($js, $py, $zjs)
 }
 
 function Get-McpParsedEnd {
@@ -565,6 +605,10 @@ function Get-McpParsedEnd {
     if ($Type -eq 'dsh-patch') {
         $out = & node $assets[0] $File ($script:McpYamlPath) 2>&1
         if ($LASTEXITCODE -ne 0) { throw "dsh patch parse failed: $out" }
+        return ($out | ConvertFrom-Json)
+    } elseif ($Type -eq 'zcode-json') {
+        $out = & node $assets[2] $File 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "zcode config parse failed: $out" }
         return ($out | ConvertFrom-Json)
     } else {
         $out = & ($script:McpPyPath) $assets[1] $File 2>&1
@@ -632,7 +676,7 @@ function Test-McpSync {
     $script:McpPyPath = [string]$c.pythonPath
     $parsed = @{}
     foreach ($srv in @($c.servers)) {
-        foreach ($endName in @('dsh', 'codex')) {
+        foreach ($endName in @('dsh', 'codex', 'zcode')) {
             $endProp = $srv.PSObject.Properties[$endName]
             if (-not $endProp) { continue }
             $end = $endProp.Value
@@ -655,7 +699,7 @@ function Test-McpSync {
         $name = [string]$srv.name
         $expCommand = [string]$srv.command
         $expArgs = @($srv.args | ForEach-Object { [string]$_ })
-        foreach ($endName in @('dsh', 'codex')) {
+        foreach ($endName in @('dsh', 'codex', 'zcode')) {
             $endProp = $srv.PSObject.Properties[$endName]
             if (-not $endProp) { continue }
             $end = $endProp.Value
@@ -677,7 +721,8 @@ function Test-McpSync {
             } else {
                 $e = $parsed[$key].PSObject.Properties[$name]
                 if (-not $e) {
-                    Add-Issue $agent 'ERROR' 'McpMissing' "no [mcp_servers.$name] section in $($end.file)" $true -LinkName $link
+                    $where = if ([string]$end.type -eq 'zcode-json') { "no mcp.servers.$name in $($end.file)" } else { "no [mcp_servers.$name] section in $($end.file)" }
+                    Add-Issue $agent 'ERROR' 'McpMissing' $where $true -LinkName $link
                     continue
                 }
                 $got = $e.Value
@@ -721,6 +766,14 @@ function Add-McpRegistration {
             $e = $parsed.PSObject.Properties[[string]$end.id]
             if (-not $e) { throw "post-append verify failed: entry not found" }
             if ($e.Value.command -ne [string]$srv.command) { throw "post-append verify failed: command mismatch" }
+        } elseif ([string]$end.type -eq 'zcode-json') {
+            $helper = Join-Path $script:ScriptDir 'register-zcode.js'
+            $argStrs = @($srv.args | ForEach-Object { [string]$_ })
+            $out = & node $helper $file ([string]$srv.name) ([string]$srv.command) @argStrs 2>&1
+            if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*ZCODE_REGISTER_OK*') { throw "zcode register failed: $out" }
+            $parsed = Get-McpParsedEnd 'zcode-json' $file
+            $e = $parsed.PSObject.Properties[[string]$srv.name]
+            if (-not $e) { throw "post-append verify failed: entry not found" }
         } else {
             Remove-SshRegistrationBlock -Type 'codex-toml' -File $file -Name ([string]$srv.name) | Out-Null
             $nl = "`r`n"
@@ -1217,9 +1270,19 @@ function Apply-Fixes {
                     $script:Fixed++
                 }
                 'SshMcpNotRegistered' {
-                    Add-SshRegistration $Cfg $iss.LinkName
-                    Write-Host "  [FIXED] ssh-mcp: registered server into end '$($iss.LinkName)'"
-                    $script:Fixed++
+                    $sc = Get-SshCfg $Cfg
+                    $endProp = $sc.registration.ends.PSObject.Properties[$iss.LinkName]
+                    if ($endProp -and [string]$endProp.Value.type -eq 'claude-json') {
+                        $helper = Join-Path $script:ScriptDir 'ssh-claude-register.js'
+                        $out = & node $helper ([string]$endProp.Value.file) ([string]$endProp.Value.launcherPath) ([string]$endProp.Value.configPath) 2>&1
+                        if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*CLAUDE_REGISTER_OK*') { throw "claude register helper failed: $out" }
+                        Write-Host "  [FIXED] ssh-mcp: registered claude ssh (launcher form)"
+                        $script:Fixed++
+                    } else {
+                        Add-SshRegistration $Cfg $iss.LinkName
+                        Write-Host "  [FIXED] ssh-mcp: registered server into end '$($iss.LinkName)'"
+                        $script:Fixed++
+                    }
                 }
                 'McpMissing' {
                     Add-McpRegistration $Cfg $iss.LinkName.Split('|')[0] $iss.LinkName.Split('|')[1]

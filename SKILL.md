@@ -48,9 +48,9 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 6. **红线**：`coding-rules` 是独立 git 仓库、非技能，四端 `skills\` 下不得出现指向它的链接
 7. **JUNCTION说明.md**：每个技能目录（家族子技能除外，其说明在主目录）必须有；文档须覆盖全部启用端的 `\skills\<name>` 路径；路径上下文里的技能名不得是**陈旧名**（改名后没跟上）或**污染串**（重复前缀叠加，如 `deepseek-harness-deepseek-harness-…`，多来自粗暴的字符串替换）
 8. **README 相关技能互链**：每个技能 README（git-commit 等"仓库根 ≠ 技能目录"的按 `repoRoots` 映射定位）的「相关技能」列表必须含全部其他技能与 `coding-rules` 的 GitHub 链接，互链不断档
-9. **ssh-mcp 配置 Junction**：`~\{claude,dsh,codex}\ssh-mcp` 三端必须是 Junction 且指向仓库 `agent-config-sync-check\assets\ssh-mcp`（数据源 toml = 唯一真相，内网档案丢失只报告不生成）；ZCode 未接入（MCP 注册机制未定位，`sync-config.json` 的 `junctionEnds` 不含它，摸清后在配置加端即可）
-10. **ssh-mcp 各端注册（launcher 形态）**：三端注册统一为 `node <home>\ssh-mcp\launcher.js --config=<home>\ssh-mcp\ssh-mcp-config.toml`（Claude=`.claude.json` 的 `mcpServers.ssh`、DSH=web patch 的 `mcp-ssh` insert 块、Codex=`config.toml` 的 `[mcp_servers.ssh]`），**注册块内零密码**；ssh 密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份（launcher 运行时注入，gitignore 排除）；检查含**密码对账**（passwords.env 键必须覆盖 toml 全部 profile，缺键报错，防"新增服务器忘配密码"静默故障）；旧形态（直接 ssh-mcp + env 内联密码）报 `SshMcpLegacyRegistration`，-Fix 自动迁移
-11. **通用 MCP 注册同步（mcpSync）**：`sync-config.json` 的 `mcpSync.servers` 登记要同步的 MCP（期望 command+args + DSH/Codex 端注册位置；Claude 端 `.claude.json` 为源，新增 MCP 照样先在 Claude 配好再抄进来）；比对是**解析级**的（node YAML / python tomllib 解析后比 command+args，不挑物理块结构——共享 insert 块里的条目也能识别）；缺失报 `McpMissing`、漂移报 `McpDrift`，-Fix 自动补齐/重写；**env 不跨端**（带敏感值的 MCP 学 ssh 用 launcher 单文件模式）；http 型 MCP（如 idea）暂不支持，不登记即不同步
+9. **ssh-mcp 配置 Junction**：`~\{claude,dsh,codex,zcode}\ssh-mcp` 四端必须是 Junction 且指向仓库 `agent-config-sync-check\assets\ssh-mcp`（数据源 toml = 唯一真相，内网档案丢失只报告不生成）；**junction 自身 ACL 也要收紧**（继承自各端 home 的 Everyone/杂 SID 会让 ssh-mcp 拒启动，dsh 端曾中招）
+10. **ssh-mcp 各端注册（launcher 形态）**：四端注册统一为 `node <home>\ssh-mcp\launcher.js --config=<home>\ssh-mcp\ssh-mcp-config.toml`（Claude=`.claude.json` 的 `mcpServers.ssh`、DSH=web patch 的 `mcp-ssh` insert 块、Codex=`config.toml` 的 `[mcp_servers.ssh]`、ZCode=`.zcode\cli\config.json` 的 `mcp.servers.ssh`），**注册块内零密码**；ssh 密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份（launcher 运行时注入，gitignore 排除）；检查含**密码对账**（passwords.env 键必须覆盖 toml 全部 profile，缺键报错，防"新增服务器忘配密码"静默故障）；旧形态（直接 ssh-mcp + env 内联密码）报 `SshMcpLegacyRegistration`，-Fix 自动迁移
+11. **通用 MCP 注册同步（mcpSync）**：`sync-config.json` 的 `mcpSync.servers` 登记要同步的 MCP（期望 command+args + DSH/Codex/ZCode 端注册位置；Claude 端 `.claude.json` 为源，新增 MCP 照样先在 Claude 配好再抄进来）；比对是**解析级**的（node YAML / python tomllib / JSON 解析后比 command+args，不挑物理块结构——共享 insert 块里的条目也能识别）；缺失报 `McpMissing`、漂移报 `McpDrift`，-Fix 自动补齐/重写；**env 不跨端**（带敏感值的 MCP 学 ssh 用 launcher 单文件模式）；http 型 MCP（如 idea）暂不支持，不登记即不同步
 
 `.zcode` 的中转链接（目标不在本仓库的 Junction）：只验"中转目标还存在"，上游删了就报死链，**只报告不自动修**。
 
@@ -66,7 +66,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 - JUNCTION说明.md 污染串 → 判定依据 = 路径 token ∉ 已知技能名/仓库子目录集合；修复 = 模板重建（原版从 git HEAD 可查，无需备份）
 - README 互链缺 → 「相关技能」段末条后补缺的链接行（名称/仓库/中文说明全部来自 config：`githubRepos` + `relatedSkills`）
 - ssh-mcp Junction 缺失/目标错/断链 → mklink /J 重建（指向 `assets\ssh-mcp`）
-- ssh-mcp 注册缺失/旧形态（DSH patch / Codex toml 直接 ssh-mcp + 内联密码）→ 备份 → 删旧块 → 追加 launcher 形态块 → node YAML / python tomllib 校验 → 失败自动回滚备份
+- ssh-mcp 注册缺失/旧形态（DSH patch / Codex toml / ZCode json 直接挂密码或非 launcher 形态）→ 备份 → 删旧块 → 追加 launcher 形态块 → node YAML / python tomllib / JSON 解析校验 → 失败自动回滚备份
 - Claude 端 ssh 注册非 launcher 形态 → `scripts\ssh-claude-register.js` 整体重写（自动备份）
 - 通用 MCP（mcpSync.servers）缺失/漂移 → 备份 → 删旧块（DSH 子项级手术，共享块/独立块通吃）→ 追加规范块 → 解析复验 → 失败回滚
 
