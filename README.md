@@ -1,6 +1,6 @@
 # agent-config-sync-check — 四端同步守卫
 
-定期检查 Claude Code / DSH / Codex / ZCode 四个工具端与自研 skill 仓库（`F:\idea-workspase-skills`）之间的同步完整性：Junction 技能链接、全局规则硬链接组、README 技能列表——防止同步被破坏了没人知道。
+定期检查 Claude Code / DSH / Codex / ZCode 四个工具端与自研 skill 仓库（`F:\idea-workspase-skills`）之间的同步完整性：Junction 技能链接、全局规则硬链接组、README 技能列表、ssh-mcp 配置同步——防止同步被破坏了没人知道。
 
 ## 相关技能
 
@@ -19,7 +19,7 @@
 
 **四端 Junction 架构下，同步坏了没有任何报警。** 技能目录删了链接悬空、新增 skill 忘挂某端、规则文件被编辑器"另存"成独立副本（硬链接组断裂，改一端其他三端不跟）、README 技能列表过期——这些全是静默故障，等到用的时候才发现技能不见了。这个技能把四端状态一遍扫完，机械性问题自动修，分叉问题报给人。
 
-## 检查项（8 条）
+## 检查项（11 条）
 
 | # | 检查项 | 内容 |
 |---|--------|------|
@@ -31,6 +31,9 @@
 | 6 | 红线 | `coding-rules` 是独立 git 仓库，任何端不得挂它 |
 | 7 | JUNCTION说明.md | 每技能必有（家族子技能除外），四端路径齐全，无陈旧名/污染串；缺失或污染自动重建，缺端自动补行 |
 | 8 | 相关技能互链 | 每技能 README「相关技能」列表含全部其他技能的 GitHub 链接，缺的自动补行 |
+| 9 | ssh-mcp 配置 Junction | `~\{claude,dsh,codex}\ssh-mcp` 三端 Junction → 仓库 `assets\ssh-mcp`（数据源 toml 唯一真相，内网档案丢失只报告）；ZCode 未接入（机制未定位，配置 `junctionEnds` 加端即启用） |
+| 10 | ssh-mcp 各端注册 | 三端统一 launcher 形态：`node <home>\ssh-mcp\launcher.js --config=<本端toml>`（Claude `.claude.json` / DSH web patch / Codex `config.toml`），注册块零密码；密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份并做对账（键须覆盖 toml 全部 profile，防新增服务器忘配密码）；旧形态/缺失 -Fix 自动迁移（备份→YAML/TOML 校验→失败回滚） |
+| 11 | 通用 MCP 同步 | `sync-config.json` 的 `mcpSync.servers` 登记的 MCP（codegraph/dbx/chrome-devtools…）三端 command+args 解析级比对（node YAML / python tomllib，共享 insert 块也能识别）；缺失/漂移 -Fix 自动补齐重写；env 不跨端，带敏感值的学 ssh 用 launcher；http 型（idea）暂不支持 |
 
 `.zcode` 里的中转链接（→ `.claude` 官方技能、→ `.codex\.system` 系统技能）只验"上游还在"，上游删了报死链，**只报告不自动修**。
 
@@ -60,11 +63,17 @@ agent-config-sync-check/
 ├── README.md             ← 本文档
 ├── JUNCTION说明.md        ← 四端 junction 指向关系与回滚方法
 ├── HOOKS说明.md           ← 四端防护能力对照（hooks/规则/插件，能力对齐实现各异）
-├── .gitignore            ← 排除 logs/
-├── sync-config.json      ← 四端路径与开关、硬链接组路径、README 标记
+├── .gitignore            ← 排除 logs/、assets/ssh-mcp/ 下 toml+密码文件（内网档案不入公开仓）
+├── sync-config.json      ← 四端路径与开关、硬链接组路径、README 标记、sshMcpConfig
+├── assets/
+│   └── ssh-mcp/          ← ssh-mcp 数据源（三端 Junction 指向这里；目录 ACL 已收紧）
+│       ├── ssh-mcp-config.toml   ← 服务器档案（内网拓扑，gitignore）
+│       ├── ssh-passwords.env     ← 密码单文件（全体系唯一密码副本，gitignore）
+│       └── launcher.js           ← 注入器：读密码文件→注入 env→拉起 ssh-mcp（入 git，零密码）
 ├── logs/                 ← 检查日志（不入 git）
 └── scripts/
-    └── sync-check.ps1    ← 检查/修复核心脚本（PS 5.1 兼容，零外部依赖）
+    ├── sync-check.ps1    ← 检查/修复核心脚本（PS 5.1 兼容，源码纯 ASCII 零密码）
+    └── ssh-claude-register.js← -Fix 专用：Claude 端 ssh 注册重写为 launcher 形态
 ```
 
 ## 每日定时（可选）

@@ -236,6 +236,513 @@ function Test-RulesHardlink {
     }
 }
 
+# ---------- checks 9 + 10: ssh-mcp config junctions + per-end registration ----------
+# The ssh-mcp TOML lives in assets\ssh-mcp (repo); each agent home gets a
+# junction <home>\ssh-mcp -> that dir, and per-end MCP registration points
+# --config into it. Passwords NEVER appear in this source: they are read at
+# runtime from the password source file (see sync-config.json) and only
+# written into the target config files.
+
+function Get-SshCfg {
+    param([object]$Cfg)
+    if ($Cfg.PSObject.Properties.Name -contains 'sshMcpConfig') { return $Cfg.sshMcpConfig }
+    return $null
+}
+
+function Test-SshMcpJunction {
+    param([object]$Cfg)
+    $c = Get-SshCfg $Cfg
+    if (-not $c -or -not $c.enabled) { return }
+    $srcDir = [string]$c.sourceDir
+    $fileName = [string]$c.configFileName
+    if (-not (Test-Path -LiteralPath (Join-Path $srcDir $fileName))) {
+        Add-Issue 'ssh-mcp' 'ERROR' 'SshCfgSourceMissing' "source toml missing: $(Join-Path $srcDir $fileName) (restore manually; never auto-generate)" $false
+        return
+    }
+    foreach ($endName in @($c.junctionEnds)) {
+        $agent = $Cfg.agents | Where-Object { $_.name -eq $endName } | Select-Object -First 1
+        if (-not $agent) { continue }
+        $lp = Join-Path $agent.home 'ssh-mcp'
+        $item = Get-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue
+        if (-not $item) {
+            Add-Issue 'ssh-mcp' 'ERROR' 'SshJunctionMissing' "$lp does not exist (expected junction to $srcDir)" $true -LinkName $endName -LinkPath $lp -ExpectedDir $srcDir
+            continue
+        }
+        if ($item.LinkType -ne 'Junction') {
+            Add-Issue 'ssh-mcp' 'ERROR' 'SshJunctionNotLink' "$lp exists but is not a junction (LinkType=$($item.LinkType)); manual review" $false
+            continue
+        }
+        if ((Normalize-Path (Get-LinkTarget $item)) -ne (Normalize-Path $srcDir)) {
+            Add-Issue 'ssh-mcp' 'ERROR' 'SshJunctionWrongTarget' "$lp -> $(Get-LinkTarget $item) (expected: $srcDir)" $true -LinkName $endName -LinkPath $lp -ExpectedDir $srcDir
+            continue
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $lp $fileName))) {
+            Add-Issue 'ssh-mcp' 'ERROR' 'SshJunctionBroken' "$lp target not reachable" $true -LinkName $endName -LinkPath $lp -ExpectedDir $srcDir
+        }
+    }
+}
+
+function Get-PasswordKeys {
+    # Read KEY=VALUE lines (names only, never values) from the single passwords file.
+    param([string]$File)
+    $keys = @()
+    foreach ($line in (Get-Content -LiteralPath $File -Encoding UTF8)) {
+        if ($line -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=') { $keys += $Matches[1] }
+    }
+    return $keys
+}
+
+function Get-TomlProfileNames {
+    param([string]$File)
+    $names = @()
+    foreach ($line in (Get-Content -LiteralPath $File -Encoding UTF8)) {
+        if ($line -match '^\s*name\s*=\s*"([^"]+)"\s*$') { $names += $Matches[1] }
+    }
+    return $names
+}
+
+function Backup-ConfigFile {
+    param([string]$File)
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $bak = "$File.bak-sshmcp-$stamp"
+    Copy-Item -LiteralPath $File -Destination $bak -Force
+    return $bak
+}
+
+function Remove-SshRegistrationBlock {
+    # Remove an existing registration block (legacy or launcher form).
+    # dsh-patch: top-level "- insert:" whose child is "- id: mcp-<name>", until the
+    #            next top-level "- " entry or EOF.
+    # codex-toml: "[mcp_servers.<name>]" until the next "[" table header or EOF
+    #             (covers the [mcp_servers.<name>.env] subtable too).
+    param([string]$Type, [string]$File, [string]$Name)
+    $text = Get-Content -LiteralPath $File -Raw -Encoding UTF8
+    $lines = [System.Collections.Generic.List[string]](($text -split "`r?`n"))
+    $remove = [System.Collections.Generic.List[int]]::new()
+    if ($Type -eq 'dsh-patch') {
+        return (Remove-McpDshChild -File $File -Id ("mcp-" + $Name))
+    } else {
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match "^\[mcp_servers\.$name\]\s*$") {
+                for ($j = $i; $j -lt $lines.Count; $j++) {
+                    if ($j -gt $i -and $lines[$j] -match '^\[') { break }
+                    $remove.Add($j)
+                }
+                break
+            }
+        }
+    }
+    if ($remove.Count -eq 0) { return $false }
+    for ($i = $remove.Count - 1; $i -ge 0; $i--) { $lines.RemoveAt($remove[$i]) }
+    while ($lines.Count -gt 0 -and $lines[$lines.Count - 1] -match '^\s*$') { $lines.RemoveAt($lines.Count - 1) }
+    Write-NoBomUtf8 -Path $File -Text (($lines -join "`r`n") + "`r`n")
+    return $true
+}
+
+function Add-SshRegistration {
+    # Install (or migrate) the launcher-form registration: no passwords in the
+    # registration block - ssh-mcp reads them from ssh-passwords.env via launcher.js.
+    param([object]$Cfg, [string]$EndName)
+    $c = (Get-SshCfg $Cfg).registration
+    $endProp = $c.ends.PSObject.Properties[$EndName]
+    if (-not $endProp) { throw "unknown ssh-mcp registration end: $EndName" }
+    $end = $endProp.Value
+    $file = [string]$end.file
+    $cfgPath = [string]$end.configPath
+    $launcher = [string]$end.launcherPath
+    $name = [string]$c.serverName
+    $bak = Backup-ConfigFile $file
+    try {
+        switch ([string]$end.type) {
+            'dsh-patch' {
+                Remove-SshRegistrationBlock -Type 'dsh-patch' -File $file -Name $name | Out-Null
+                $nl = "`r`n"
+                $block = $nl +
+                    '- insert:' + $nl +
+                    "  - id: mcp-$name" + $nl +
+                    "    name: '@deepseek-ai/dsh-mcp-client'" + $nl +
+                    '    config:' + $nl +
+                    "      serverName: $name" + $nl +
+                    '      transport: stdio' + $nl +
+                    "      command: $([string]$c.command)" + $nl +
+                    '      args:' + $nl +
+                    "      - $launcher" + $nl +
+                    "      - --config=$cfgPath" + $nl
+                Append-NoBomUtf8 -Path $file -Text $block
+                $code = "const fs=require('fs'),YAML=require(process.argv[2]);YAML.parse(fs.readFileSync(process.argv[1],'utf8'));console.log('YAML_OK')"
+                $out = & node -e $code $file ([string]$c.yamlModulePath) 2>&1
+                if (($out | Out-String) -notlike '*YAML_OK*') { throw "yaml validation failed after append: $out" }
+            }
+            'codex-toml' {
+                Remove-SshRegistrationBlock -Type 'codex-toml' -File $file -Name $name | Out-Null
+                $nl = "`r`n"
+                $block = $nl +
+                    "[mcp_servers.$name]" + $nl +
+                    "command = `"$([string]$c.command)`"" + $nl +
+                    "args = [`"$launcher`", `"--config=$cfgPath`"]" + $nl
+                Append-NoBomUtf8 -Path $file -Text $block
+                $py = [string]$c.pythonPath
+                $code = "import tomllib,sys; tomllib.load(open(sys.argv[1],'rb')); print('TOML_OK')"
+                $out = & $py -c $code $file 2>&1
+                if (($out | Out-String) -notlike '*TOML_OK*') { throw "toml validation failed after append: $out" }
+            }
+            default { throw "unsupported registration type: $($end.type)" }
+        }
+        # backup is kept on purpose (*.bak-sshmcp-* never enters git)
+    } catch {
+        if ($bak -and (Test-Path -LiteralPath $bak)) {
+            Copy-Item -LiteralPath $bak -Destination $file -Force
+        }
+        throw
+    }
+}
+
+function Test-SshMcpRegistration {
+    param([object]$Cfg)
+    $c = Get-SshCfg $Cfg
+    if (-not $c -or -not $c.enabled -or -not $c.registration) { return }
+    $reg = $c.registration
+    $name = [string]$reg.serverName
+    $launcherName = [string]$reg.launcherName
+    $command = [string]$reg.command
+
+    # 10a. passwords file must exist and cover every toml profile
+    $pwFile = [string]$reg.passwordsFile
+    $toml = Join-Path ([string]$c.sourceDir) ([string]$c.configFileName)
+    if (-not (Test-Path -LiteralPath $pwFile)) {
+        Add-Issue 'ssh-mcp' 'ERROR' 'SshPasswordsMissing' "passwords file missing: $pwFile (contains secrets; never auto-generate - restore manually)" $false
+    } elseif (Test-Path -LiteralPath $toml) {
+        $pwKeys = Get-PasswordKeys $pwFile
+        $missing = @()
+        foreach ($pn in (Get-TomlProfileNames $toml)) {
+            $need = 'SSH_MCP_' + ($pn.ToUpperInvariant()) + '_PASSWORD'
+            if ($pwKeys -notcontains $need) { $missing += $need }
+        }
+        if ($missing.Count -gt 0) {
+            Add-Issue 'ssh-mcp' 'ERROR' 'SshPasswordsIncomplete' "passwords file lacks keys: $($missing -join ', ') (a server profile has no password)" $false
+        }
+    }
+
+    # 10b. per-end registration must be in the launcher form (password-free)
+    foreach ($prop in $reg.ends.PSObject.Properties) {
+        $endName = $prop.Name
+        $end = $prop.Value
+        $file = [string]$end.file
+        $cfgPath = [string]$end.configPath
+        $launcherPath = [string]$end.launcherPath
+        $agent = "ssh-mcp/$endName"
+        if (-not (Test-Path -LiteralPath $file)) {
+            Add-Issue $agent 'ERROR' 'SshRegFileMissing' "registration target file missing: $file" $false
+            continue
+        }
+        switch ([string]$end.type) {
+            'claude-json' {
+                $json = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json
+                if (-not $json.mcpServers) {
+                    Add-Issue $agent 'ERROR' 'SshMcpNotRegistered' "no mcpServers at all in $file" ([bool]$end.fixable) -LinkName $endName
+                    continue
+                }
+                $srvProp = $json.mcpServers.PSObject.Properties[$name]
+                if (-not $srvProp) {
+                    Add-Issue $agent 'ERROR' 'SshMcpNotRegistered' "mcpServers.$name missing in $file" ([bool]$end.fixable) -LinkName $endName
+                    continue
+                }
+                $srv = $srvProp.Value
+                if ([string]$srv.command -eq $command -and @($srv.args | ForEach-Object { [string]$_ }) -contains $launcherPath) {
+                    $argsText = @($srv.args | ForEach-Object { [string]$_ }) -join ' '
+                    if ($argsText -notlike "*--config=$cfgPath*") {
+                        Add-Issue $agent 'ERROR' 'SshMcpStalePath' "ssh args point elsewhere: $argsText" $true -LinkName $endName
+                    }
+                    if ($srv.env -and @($srv.env.PSObject.Properties).Count -gt 0) {
+                        Add-Issue $agent 'WARN' 'SshMcpLegacyEnv' "mcpServers.$name.env still carries values; launcher form needs no env" $false
+                    }
+                    continue
+                }
+                Add-Issue $agent 'ERROR' 'SshMcpLegacyRegistration' "mcpServers.$name is not in launcher form (command=$([string]$srv.command)) - passwords must live only in ssh-passwords.env" ([bool]$end.fixable) -LinkName $endName
+            }
+            'dsh-patch' {
+                $text = Get-Content -LiteralPath $file -Raw -Encoding UTF8
+                $blockStart = [regex]::Match($text, "(?ms)^- insert:\r?\n  - id: mcp-$name\s*$")
+                if (-not $blockStart.Success) {
+                    Add-Issue $agent 'ERROR' 'SshMcpNotRegistered' "no 'mcp-$name' insert block in $file" $true -LinkName $endName
+                    continue
+                }
+                $secStart = $text.IndexOf($blockStart.Value)
+                $nextTop = $text.IndexOf("`n- ", $secStart + 1)
+                if ($nextTop -lt 0) { $nextTop = $text.Length }
+                $blockText = $text.Substring($secStart, $nextTop - $secStart)
+                if ($blockText -notlike "*$launcherName*") {
+                    Add-Issue $agent 'ERROR' 'SshMcpLegacyRegistration' "mcp-$name block still spawns ssh-mcp directly (passwords inlined) - migrate to launcher form" $true -LinkName $endName
+                    continue
+                }
+                if ($blockText -notlike "*--config=$cfgPath*") {
+                    Add-Issue $agent 'WARN' 'SshMcpStalePath' "mcp-$name block points elsewhere (manual review)" $false
+                }
+            }
+            'codex-toml' {
+                $text = Get-Content -LiteralPath $file -Raw -Encoding UTF8
+                $m = [regex]::Match($text, "(?m)^\[mcp_servers\.$name\]\s*$")
+                if (-not $m.Success) {
+                    Add-Issue $agent 'ERROR' 'SshMcpNotRegistered' "no [mcp_servers.$name] section in $file" $true -LinkName $endName
+                    continue
+                }
+                $nextTop = $text.IndexOf("`n[", $m.Index + $m.Length)
+                if ($nextTop -lt 0) { $nextTop = $text.Length }
+                $blockText = $text.Substring($m.Index, $nextTop - $m.Index)
+                if ($blockText -notlike "*$launcherName*") {
+                    Add-Issue $agent 'ERROR' 'SshMcpLegacyRegistration' "[mcp_servers.$name] still spawns ssh-mcp directly (passwords inlined) - migrate to launcher form" $true -LinkName $endName
+                    continue
+                }
+                if ($blockText -notlike "*--config=$cfgPath*") {
+                    Add-Issue $agent 'WARN' 'SshMcpStalePath' "[mcp_servers.$name] points elsewhere (manual review)" $false
+                }
+            }
+            default {
+                Add-Issue $agent 'WARN' 'SshRegUnsupported' "registration type '$($end.type)' not supported (skipped)" $false
+            }
+        }
+    }
+}
+
+# ---------- mcpSync: generic per-server registration sync (ssh-style flow) ----------
+# Every server is declared in sync-config.json (mcpSync.servers) the same way
+# sshMcpConfig declares ssh: expected command+args plus per-end registration
+# targets. Check = parse the end files (node YAML / python tomllib) and compare
+# command+args; fix = backup, remove old block, append canonical block,
+# re-validate, roll back on failure. No passwords ever flow through here -
+# servers that need env secrets must use the ssh launcher pattern instead.
+
+function Get-McpSyncCfg {
+    param([object]$Cfg)
+    if ($Cfg.PSObject.Properties.Name -contains 'mcpSync') { return $Cfg.mcpSync }
+    return $null
+}
+
+function Write-McpParserAssets {
+    # Parser helpers as real files (PS 5.1 mangles inline code that embeds
+    # double quotes when passing it to node/python on the command line).
+    $js = Join-Path $script:LogDir 'parse-dsh.js'
+    $py = Join-Path $script:LogDir 'parse-codex.py'
+    Write-NoBomUtf8 -Path $js -Text @'
+// usage: node parse-dsh.js <patch.yml> <yaml-module-path>
+// (node argv: [0]=node, [1]=this script, [2]=patch file, [3]=yaml module)
+const fs = require("fs");
+const YAML = require(process.argv[3]);
+const doc = YAML.parse(fs.readFileSync(process.argv[2], "utf8")) || [];
+const found = {};
+for (const item of doc) {
+  if (item && item.insert) {
+    for (const e of item.insert) {
+      if (e && String(e.id || "").indexOf("mcp-") === 0) {
+        found[String(e.id)] = {
+          serverName: (e.config && e.config.serverName) ? String(e.config.serverName) : "",
+          command: (e.config && e.config.command) ? String(e.config.command) : "",
+          args: (e.config && e.config.args ? e.config.args : []).map(String)
+        };
+      }
+    }
+  }
+}
+console.log(JSON.stringify(found));
+'@
+    Write-NoBomUtf8 -Path $py -Text @'
+import tomllib, sys, json
+d = tomllib.load(open(sys.argv[1], "rb"))
+ms = d.get("mcp_servers", {})
+out = {}
+for k, v in ms.items():
+    out[k] = {"command": (v.get("command") or ""), "args": [str(a) for a in (v.get("args") or [])]}
+print(json.dumps(out))
+'@
+    return @($js, $py)
+}
+
+function Get-McpParsedEnd {
+    # Parse an end config file, return its mcp entries as PS object:
+    # dsh-patch -> keyed by insert id (mcp-*), codex-toml -> keyed by server name.
+    param([string]$Type, [string]$File)
+    $assets = Write-McpParserAssets
+    if ($Type -eq 'dsh-patch') {
+        $out = & node $assets[0] $File ($script:McpYamlPath) 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "dsh patch parse failed: $out" }
+        return ($out | ConvertFrom-Json)
+    } else {
+        $out = & ($script:McpPyPath) $assets[1] $File 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "codex toml parse failed: $out" }
+        return ($out | ConvertFrom-Json)
+    }
+}
+
+function ConvertTo-YamlArgLines {
+    param([object]$ArgList, [string]$Indent)
+    $out = @()
+    if (-not $ArgList -or @($ArgList).Count -eq 0) { return $out }
+    $out += "${Indent}args:"
+    foreach ($a in @($ArgList)) {
+        $v = [string]$a
+        if ($v -match "[\s""']") { $out += "$Indent- '" + $v.Replace("'", "''") + "'" }
+        else { $out += "$Indent- $v" }
+    }
+    return $out
+}
+
+function ConvertTo-TomlArgArray {
+    param([object]$ArgList)
+    $items = @()
+    foreach ($a in @($ArgList)) {
+        $v = ([string]$a).Replace('\', '\\').Replace('"', '\"')
+        $items += '"' + $v + '"'
+    }
+    return ('[' + ($items -join ', ') + ']')
+}
+
+function Remove-McpDshChild {
+    # Remove one "  - id: <id>" child (with its whole indented body) from the
+    # dsh patch, wherever it lives (standalone or shared insert block). If the
+    # wrapper "- insert:" becomes empty, drop it too.
+    param([string]$File, [string]$Id)
+    $text = Get-Content -LiteralPath $File -Raw -Encoding UTF8
+    $lines = [System.Collections.Generic.List[string]](($text -split "`r?`n"))
+    $idx = -1
+    $idPat = '^\s{2}-\s*id:\s*' + [regex]::Escape($Id) + '\s*$'
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match $idPat) { $idx = $i; break }
+    }
+    if ($idx -lt 0) { return $false }
+    $endIdx = $lines.Count
+    for ($j = $idx + 1; $j -lt $lines.Count; $j++) {
+        if ($lines[$j] -match '^\s{2}-\s' -or $lines[$j] -match '^- ') { $endIdx = $j; break }
+    }
+    for ($j = $endIdx - 1; $j -ge $idx; $j--) { $lines.RemoveAt($j) }
+    if ($idx -gt 0 -and $lines[$idx - 1] -eq '- insert:') {
+        $n = $idx
+        while ($n -lt $lines.Count -and $lines[$n] -match '^\s*$') { $n++ }
+        if ($n -ge $lines.Count -or $lines[$n] -match '^- ') { $lines.RemoveAt($idx - 1) }
+    }
+    while ($lines.Count -gt 0 -and $lines[$lines.Count - 1] -match '^\s*$') { $lines.RemoveAt($lines.Count - 1) }
+    Write-NoBomUtf8 -Path $File -Text (($lines -join "`r`n") + "`r`n")
+    return $true
+}
+
+function Test-McpSync {
+    param([object]$Cfg)
+    $c = Get-McpSyncCfg $Cfg
+    if (-not $c -or -not $c.enabled) { return }
+    $script:McpYamlPath = [string]$c.yamlModulePath
+    $script:McpPyPath = [string]$c.pythonPath
+    $parsed = @{}
+    foreach ($srv in @($c.servers)) {
+        foreach ($endName in @('dsh', 'codex')) {
+            $endProp = $srv.PSObject.Properties[$endName]
+            if (-not $endProp) { continue }
+            $end = $endProp.Value
+            $key = [string]$end.type + '|' + [string]$end.file
+            if (-not $parsed.ContainsKey($key)) {
+                if (-not (Test-Path -LiteralPath $end.file)) {
+                    Add-Issue "mcp-sync/$($srv.name)/$endName" 'ERROR' 'McpFileMissing' "target file missing: $($end.file)" $false
+                    $parsed[$key] = $null
+                } else {
+                    try { $parsed[$key] = Get-McpParsedEnd ([string]$end.type) ([string]$end.file) }
+                    catch {
+                        Add-Issue "mcp-sync/$($srv.name)/$endName" 'ERROR' 'McpParseFailed' ("{0}" -f $_.Exception.Message) $false
+                        $parsed[$key] = $null
+                    }
+                }
+            }
+        }
+    }
+    foreach ($srv in @($c.servers)) {
+        $name = [string]$srv.name
+        $expCommand = [string]$srv.command
+        $expArgs = @($srv.args | ForEach-Object { [string]$_ })
+        foreach ($endName in @('dsh', 'codex')) {
+            $endProp = $srv.PSObject.Properties[$endName]
+            if (-not $endProp) { continue }
+            $end = $endProp.Value
+            $key = [string]$end.type + '|' + [string]$end.file
+            if (-not $parsed[$key]) { continue }
+            $agent = "mcp-sync/$name/$endName"
+            $link = "$name|$endName"
+            if ([string]$end.type -eq 'dsh-patch') {
+                $e = $parsed[$key].PSObject.Properties[[string]$end.id]
+                if (-not $e) {
+                    Add-Issue $agent 'ERROR' 'McpMissing' "no '$($end.id)' insert entry in $($end.file)" $true -LinkName $link
+                    continue
+                }
+                $got = $e.Value
+                if ($got.serverName -ne $name) {
+                    Add-Issue $agent 'ERROR' 'McpDrift' "'$($end.id)' serverName mismatch (got: $($got.serverName))" $true -LinkName $link
+                    continue
+                }
+            } else {
+                $e = $parsed[$key].PSObject.Properties[$name]
+                if (-not $e) {
+                    Add-Issue $agent 'ERROR' 'McpMissing' "no [mcp_servers.$name] section in $($end.file)" $true -LinkName $link
+                    continue
+                }
+                $got = $e.Value
+            }
+            if ($got.command -ne $expCommand) {
+                Add-Issue $agent 'ERROR' 'McpDrift' "command mismatch (got: $($got.command), want: $expCommand)" $true -LinkName $link
+                continue
+            }
+            if ((@($got.args) -join "`n") -ne ($expArgs -join "`n")) {
+                Add-Issue $agent 'ERROR' 'McpDrift' "args mismatch (got: $($got.args -join ' '))" $true -LinkName $link
+            }
+        }
+    }
+}
+
+function Add-McpRegistration {
+    # ssh-style repair: backup -> remove old block -> append canonical form ->
+    # re-parse and verify -> roll back on any failure.
+    param([object]$Cfg, [string]$ServerName, [string]$EndName)
+    $c = Get-McpSyncCfg $Cfg
+    $srv = @($c.servers | Where-Object { $_.name -eq $ServerName })[0]
+    if (-not $srv) { throw "unknown mcp-sync server: $ServerName" }
+    $end = $srv.PSObject.Properties[$EndName].Value
+    $file = [string]$end.file
+    $bak = Backup-ConfigFile $file
+    try {
+        if ([string]$end.type -eq 'dsh-patch') {
+            Remove-McpDshChild -File $file -Id ([string]$end.id) | Out-Null
+            $nl = "`r`n"
+            $block = $nl +
+                '- insert:' + $nl +
+                "  - id: $($end.id)" + $nl +
+                "    name: '$([string]$end.clientName)'" + $nl +
+                '    config:' + $nl +
+                "      serverName: $([string]$srv.name)" + $nl +
+                '      transport: stdio' + $nl +
+                "      command: $([string]$srv.command)" + $nl
+            foreach ($l in (ConvertTo-YamlArgLines $srv.args '      ')) { $block += $l + $nl }
+            Append-NoBomUtf8 -Path $file -Text $block
+            $parsed = Get-McpParsedEnd 'dsh-patch' $file
+            $e = $parsed.PSObject.Properties[[string]$end.id]
+            if (-not $e) { throw "post-append verify failed: entry not found" }
+            if ($e.Value.command -ne [string]$srv.command) { throw "post-append verify failed: command mismatch" }
+        } else {
+            Remove-SshRegistrationBlock -Type 'codex-toml' -File $file -Name ([string]$srv.name) | Out-Null
+            $nl = "`r`n"
+            $block = $nl +
+                "[mcp_servers.$([string]$srv.name)]" + $nl +
+                "command = `"$([string]$srv.command)`"" + $nl +
+                "args = $(ConvertTo-TomlArgArray $srv.args)" + $nl
+            Append-NoBomUtf8 -Path $file -Text $block
+            $parsed = Get-McpParsedEnd 'codex-toml' $file
+            $e = $parsed.PSObject.Properties[[string]$srv.name]
+            if (-not $e) { throw "post-append verify failed: section not found" }
+            if ($e.Value.command -ne [string]$srv.command) { throw "post-append verify failed: command mismatch" }
+        }
+        # backup is kept on purpose (*.bak-sshmcp-* never enters git)
+    } catch {
+        if ($bak -and (Test-Path -LiteralPath $bak)) {
+            Copy-Item -LiteralPath $bak -Destination $file -Force
+        }
+        throw
+    }
+}
+
 # ---------- check 5: repo root README skill-list section ----------
 
 # Chinese full stop as Unicode code point (source must stay ASCII)
@@ -688,6 +1195,68 @@ function Apply-Fixes {
                     Write-Host "  [FIXED] $($iss.LinkName): filled missing related links in README"
                     $script:Fixed++
                 }
+                'SshJunctionMissing' {
+                    New-Junction -LinkPath $iss.LinkPath -TargetDir $iss.ExpectedDir
+                    Write-Host "  [FIXED] ssh-mcp: created junction $($iss.LinkPath) -> $($iss.ExpectedDir)"
+                    $script:Fixed++
+                }
+                'SshJunctionWrongTarget' {
+                    if ((Get-Item -LiteralPath $iss.LinkPath -Force).LinkType -eq 'Junction') {
+                        Remove-LinkSafe $iss.LinkPath | Out-Null
+                    }
+                    New-Junction -LinkPath $iss.LinkPath -TargetDir $iss.ExpectedDir
+                    Write-Host "  [FIXED] ssh-mcp: rebuilt junction $($iss.LinkPath) -> $($iss.ExpectedDir)"
+                    $script:Fixed++
+                }
+                'SshJunctionBroken' {
+                    if ((Get-Item -LiteralPath $iss.LinkPath -Force).LinkType -eq 'Junction') {
+                        Remove-LinkSafe $iss.LinkPath | Out-Null
+                    }
+                    New-Junction -LinkPath $iss.LinkPath -TargetDir $iss.ExpectedDir
+                    Write-Host "  [FIXED] ssh-mcp: rebuilt broken junction $($iss.LinkPath)"
+                    $script:Fixed++
+                }
+                'SshMcpNotRegistered' {
+                    Add-SshRegistration $Cfg $iss.LinkName
+                    Write-Host "  [FIXED] ssh-mcp: registered server into end '$($iss.LinkName)'"
+                    $script:Fixed++
+                }
+                'McpMissing' {
+                    Add-McpRegistration $Cfg $iss.LinkName.Split('|')[0] $iss.LinkName.Split('|')[1]
+                    Write-Host "  [FIXED] mcp-sync: registered '$($iss.LinkName)'"
+                    $script:Fixed++
+                }
+                'McpDrift' {
+                    Add-McpRegistration $Cfg $iss.LinkName.Split('|')[0] $iss.LinkName.Split('|')[1]
+                    Write-Host "  [FIXED] mcp-sync: rewrote '$($iss.LinkName)' to match source form"
+                    $script:Fixed++
+                }
+                'SshMcpLegacyRegistration' {
+                    $sc = Get-SshCfg $Cfg
+                    $endProp = $sc.registration.ends.PSObject.Properties[$iss.LinkName]
+                    if ($endProp -and [string]$endProp.Value.type -eq 'claude-json') {
+                        $helper = Join-Path $script:ScriptDir 'ssh-claude-register.js'
+                        $out = & node $helper ([string]$endProp.Value.file) ([string]$endProp.Value.launcherPath) ([string]$endProp.Value.configPath) 2>&1
+                        if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*CLAUDE_REGISTER_OK*') { throw "claude register helper failed: $out" }
+                        Write-Host "  [FIXED] ssh-mcp: rewrote claude ssh registration to launcher form"
+                        $script:Fixed++
+                    } else {
+                        Add-SshRegistration $Cfg $iss.LinkName
+                        Write-Host "  [FIXED] ssh-mcp: migrated end '$($iss.LinkName)' to launcher form"
+                        $script:Fixed++
+                    }
+                }
+                'SshMcpStalePath' {
+                    $sc = Get-SshCfg $Cfg
+                    $endProp = $sc.registration.ends.PSObject.Properties[$iss.LinkName]
+                    if ($endProp -and [string]$endProp.Value.type -eq 'claude-json') {
+                        $helper = Join-Path $script:ScriptDir 'ssh-claude-register.js'
+                        $out = & node $helper ([string]$endProp.Value.file) ([string]$endProp.Value.launcherPath) ([string]$endProp.Value.configPath) 2>&1
+                        if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*CLAUDE_REGISTER_OK*') { throw "claude register helper failed: $out" }
+                        Write-Host "  [FIXED] ssh-mcp: rewrote claude ssh registration to launcher form"
+                        $script:Fixed++
+                    }
+                }
                 default {
                     # not fixable by design
                 }
@@ -722,6 +1291,9 @@ function Invoke-AllChecks {
         }
     }
     Test-RulesHardlink $Cfg
+    Test-SshMcpJunction $Cfg
+    Test-SshMcpRegistration $Cfg
+    Test-McpSync $Cfg
     Test-Readme $Cfg $Expected
     Test-JunctionDocs $Cfg $Expected
     Test-RelatedLinks $Cfg $Expected
@@ -750,7 +1322,7 @@ if (-not $Quiet) {
     Write-Host ("Expected skills: {0} | Agents: {1} | Fix mode: {2}" -f $expected.Count, $agentsChecked, ($(if ($Fix) { 'YES' } else { 'NO' })))
     Write-Host ""
     if ($Issues.Count -eq 0) {
-        Write-Host "ALL GREEN: links / dangling / hardlink group / frontmatter / README / redline all pass" -ForegroundColor Green
+        Write-Host "ALL GREEN: links / dangling / hardlink group / frontmatter / README / redline / ssh-mcp all pass" -ForegroundColor Green
     } else {
         foreach ($iss in ($Issues | Sort-Object Agent, Type)) {
             $color = if ($iss.Level -eq 'ERROR') { 'Red' } else { 'Yellow' }

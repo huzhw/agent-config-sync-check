@@ -1,2 +1,5 @@
 logs/
 *.log
+# ssh-mcp: intranet topology + passwords stay local-only, never push to public GitHub
+assets/ssh-mcp/ssh-mcp-config.toml
+assets/ssh-mcp/ssh-passwords.env

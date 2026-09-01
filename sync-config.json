@@ -16,6 +16,53 @@
       "C:\\Users\\Administrator\\.zcode\\AGENTS.md"
     ]
   },
+  "sshMcpConfig": {
+    "enabled": true,
+    "sourceDir": "F:\\idea-workspase-skills\\agent-config-sync-check\\assets\\ssh-mcp",
+    "configFileName": "ssh-mcp-config.toml",
+    "junctionEnds": ["claude", "dsh", "codex"],
+    "registration": {
+      "serverName": "ssh",
+      "command": "node",
+      "launcherName": "launcher.js",
+      "passwordsFile": "F:\\idea-workspase-skills\\agent-config-sync-check\\assets\\ssh-mcp\\ssh-passwords.env",
+      "pythonPath": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "yamlModulePath": "C:\\Users\\Administrator\\node_global\\node_modules\\@deepseek-ai\\dsh\\node_modules\\yaml",
+      "ends": {
+        "claude": { "type": "claude-json", "file": "C:\\Users\\Administrator\\.claude.json", "configPath": "C:/Users/Administrator/.claude/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.claude/ssh-mcp/launcher.js", "fixable": true },
+        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "configPath": "C:/Users/Administrator/.dsh/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.dsh/ssh-mcp/launcher.js" },
+        "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml", "configPath": "C:/Users/Administrator/.codex/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.codex/ssh-mcp/launcher.js" }
+      }
+    }
+  },
+  "mcpSync": {
+    "enabled": true,
+    "servers": [
+      {
+        "name": "codegraph",
+        "command": "codegraph",
+        "args": ["serve", "--mcp"],
+        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-codegraph", "clientName": "@deepseek-ai/dsh-mcp-client" },
+        "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" }
+      },
+      {
+        "name": "dbx",
+        "command": "dbx-mcp-server",
+        "args": [],
+        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-dbx", "clientName": "@deepseek-ai/dsh-mcp-client" },
+        "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" }
+      },
+      {
+        "name": "chrome-devtools",
+        "command": "npx",
+        "args": ["-y", "chrome-devtools-mcp@latest", "--executablePath=C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", "--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP"],
+        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-chrome-devtools", "clientName": "@deepseek-ai/dsh-mcp-client" },
+        "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" }
+      }
+    ],
+    "pythonPath": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+    "yamlModulePath": "C:\\Users\\Administrator\\node_global\\node_modules\\@deepseek-ai\\dsh\\node_modules\\yaml"
+  },
   "readme": {
     "enabled": true,
     "path": "F:\\idea-workspase-skills\\README.md",
