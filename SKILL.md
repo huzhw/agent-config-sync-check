@@ -38,7 +38,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 - **看最近一次检查**：读 `agent-config-sync-check\logs\sync-check.log` 最新记录（手动运行 skill 时写入；默认不装定时任务，需要时按 README「每日定时（可选）」建）
 - 退出码：`0` = 全绿；`1` = 仍存在问题
 
-## 检查项（11 条）
+## 检查项（12 条）
 
 1. **技能链接覆盖**：仓库里每个含 `SKILL.md` 的目录（期望集合从 frontmatter `name` 自动推导，新增技能自动纳入）× 四端，`skills\<name>` 必须存在、是 Junction、目标等于仓库规范路径
 2. **死链**：四端 `skills\` 下所有指向本仓库的 Junction，目标必须还存在（仓库删了技能但链接没拆 = 死链）
@@ -51,6 +51,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 9. **ssh-mcp 配置 Junction**：`~\{claude,dsh,codex,zcode}\ssh-mcp` 四端必须是 Junction 且指向仓库 `agent-config-sync-check\assets\ssh-mcp`（数据源 toml = 唯一真相，内网档案丢失只报告不生成）；**junction 自身 ACL 也要收紧**（继承自各端 home 的 Everyone/杂 SID 会让 ssh-mcp 拒启动，dsh 端曾中招）
 10. **ssh-mcp 各端注册（launcher 形态）**：四端注册统一为 `node <home>\ssh-mcp\launcher.js --config=<home>\ssh-mcp\ssh-mcp-config.toml`（Claude=`.claude.json` 的 `mcpServers.ssh`、DSH=web patch 的 `mcp-ssh` insert 块、Codex=`config.toml` 的 `[mcp_servers.ssh]`、ZCode=`.zcode\cli\config.json` 的 `mcp.servers.ssh`），**注册块内零密码**；ssh 密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份（launcher 运行时注入，gitignore 排除）；检查含**密码对账**（passwords.env 键必须覆盖 toml 全部 profile，缺键报错，防"新增服务器忘配密码"静默故障）；旧形态（直接 ssh-mcp + env 内联密码）报 `SshMcpLegacyRegistration`，-Fix 自动迁移
 11. **通用 MCP 注册同步（mcpSync）**：`sync-config.json` 的 `mcpSync.servers` 登记要同步的 MCP（期望 command+args + DSH/Codex/ZCode 端注册位置；Claude 端 `.claude.json` 为源，新增 MCP 照样先在 Claude 配好再抄进来）；比对是**解析级**的（node YAML / python tomllib / JSON 解析后比 command+args，不挑物理块结构——共享 insert 块里的条目也能识别）；缺失报 `McpMissing`、漂移报 `McpDrift`，-Fix 自动补齐/重写；**env 不跨端**（带敏感值的 MCP 学 ssh 用 launcher 单文件模式）；http 型 MCP（如 idea）暂不支持，不登记即不同步
+12. **防护 hooks 注册同步（hooksSync）**：源 = `~\.claude\settings.json` hooks 段（hooks 只手工维护这一处）；ZCode 端落点 = `~\.zcode\cli\config.json` 的 `hooks.events`（**实测 ZCode 只执行这里的 hooks，且必须 `hooks.enabled: true`**；`~\.zcode\settings.json` 不被读取，`~\.claude\settings.json` 被其 legacy 加载器列出但 `enabled` 恒 false 不执行）；转换规则在 `scripts\hooks-convert.js`：`SessionEnd` 事件丢弃（ZCode 不支持）、matcher 去掉 `MultiEdit`（ZCode 无此工具，`ApplyPatch` 走 `Write|Edit` 别名）、`rtk hook claude` 排除（Claude 生态专属）、`--source=claude` 改写 `--source=zcode`、shell 命令串拆成 `process` 型（`.sh` → `bash <绝对路径>`、`.cjs/.js` → `node <路径> <参数>`，timeout 秒→毫秒）；缺失报 `HookMissing`、漂移报 `HookDrift`、runner 没开报 `HooksRunnerDisabled`，-Fix 经 `scripts\register-zcode-hooks.js` 幂等合并（按 event+matcher 分组、args 含脚本路径=同源条目原位替换）；Codex 端只**报告**（`CodexHookMissing`，config.toml 每条 hook 带 trusted_hash，自动改写会破坏信任需手动重新接受），且排除 Codex 适配版脚本与走 notify 配置的 tokentracker
 
 `.zcode` 的中转链接（目标不在本仓库的 Junction）：只验"中转目标还存在"，上游删了就报死链，**只报告不自动修**。
 
@@ -69,6 +70,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 - ssh-mcp 注册缺失/旧形态（DSH patch / Codex toml / ZCode json 直接挂密码或非 launcher 形态）→ 备份 → 删旧块 → 追加 launcher 形态块 → node YAML / python tomllib / JSON 解析校验 → 失败自动回滚备份
 - Claude 端 ssh 注册非 launcher 形态 → `scripts\ssh-claude-register.js` 整体重写（自动备份）
 - 通用 MCP（mcpSync.servers）缺失/漂移 → 备份 → 删旧块（DSH 子项级手术，共享块/独立块通吃）→ 追加规范块 → 解析复验 → 失败回滚
+- ZCode hooks（hooksSync）缺失/漂移/runner 未开 → `scripts\register-zcode-hooks.js` 幂等合并写入 `~\.zcode\cli\config.json`（强制 `hooks.enabled: true`，按 event+matcher 分组、args 含脚本路径视为同源原位替换，自动备份 + 写后 JSON 复验）；spec 用 hooks-convert.js 的原始 JSON 输出直传，**禁止经 PS 对象 ConvertTo-Json 往返**（PS 5.1 会把反斜杠二次转义毁掉 Windows 路径）
 
 **只报告不自动修**：
 - 硬链接组断裂（某端可能已分叉，并错丢内容，人工定哪份为准）
@@ -79,6 +81,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 - ssh-mcp 数据源 toml 丢失（内网机器档案，无法自动生成）
 - DSH/Codex 注册存在但 `--config` 路径漂移（改写已有块有风险，人工核）
 - 各端注册目标文件本身缺失（`.claude.json` 等不属于本技能管辖）
+- Codex hooks 缺失（`CodexHookMissing`，trusted_hash 机制，自动改写会破坏信任）
 
 ## 🔴 红线（脚本与人工都必须遵守）
 
@@ -90,7 +93,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 
 ## 配置
 
-`sync-config.json`：四端路径与开关（`skillsEnabled`）、硬链接组路径、README 标记、红线目录、计划任务名、`sshMcpConfig`（ssh-mcp 配置同步：数据源目录、Junction 端清单、各端注册方式与密码源）、`mcpSync`（通用 MCP 注册同步：servers 数组登记期望形态与端位置）。以后新增第 5 端：`agents` 数组加一条即可；某端暂时不想管：把它的 `skillsEnabled` 改 `false`。
+`sync-config.json`：四端路径与开关（`skillsEnabled`）、硬链接组路径、README 标记、红线目录、计划任务名、`sshMcpConfig`（ssh-mcp 配置同步：数据源目录、Junction 端清单、各端注册方式与密码源）、`mcpSync`（通用 MCP 注册同步：servers 数组登记期望形态与端位置）、`hooksSync`（防护 hooks 注册同步：源 settings.json、ZCode 端落点与转换/排除/改写规则、Codex 端只报告）。以后新增第 5 端：`agents` 数组加一条即可；某端暂时不想管：把它的 `skillsEnabled` 改 `false`。
 
 四端防护钩子（hooks/规则/插件）的能力对照与配置位置见本目录 `HOOKS说明.md`；脚本事实源与分发关系见 `coding-rules\SYNC说明.md` 第三节。
 

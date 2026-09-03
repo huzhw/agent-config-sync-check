@@ -67,6 +67,37 @@
     "pythonPath": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
     "yamlModulePath": "C:\\Users\\Administrator\\node_global\\node_modules\\@deepseek-ai\\dsh\\node_modules\\yaml"
   },
+  "hooksSync": {
+    "enabled": true,
+    "source": {
+      "file": "C:\\Users\\Administrator\\.claude\\settings.json",
+      "section": "hooks"
+    },
+    "supportedEvents": ["SessionStart", "UserPromptSubmit", "PreToolUse", "PermissionRequest", "PostToolUse", "PostToolUseFailure", "Stop"],
+    "ends": {
+      "zcode": {
+        "enabled": true,
+        "type": "zcode-json-hooks",
+        "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json",
+        "fixable": true,
+        "preferredType": "process",
+        "dropEvents": ["SessionEnd"],
+        "dropToolsInMatcher": ["MultiEdit"],
+        "excludeCommandPatterns": ["rtk hook claude"],
+        "rewrite": [
+          { "match": "--source=claude", "replace": "--source=zcode" }
+        ]
+      },
+      "codex": {
+        "enabled": true,
+        "type": "codex-toml-hooks",
+        "file": "C:\\Users\\Administrator\\.codex\\config.toml",
+        "fixable": false,
+        "dropEvents": ["SessionEnd", "Stop"],
+        "excludeCommandPatterns": ["rtk hook claude", "guard-memory-write.sh", "guard-memory-approved.sh", "warn-download-location.sh", "notify.cjs"]
+      }
+    }
+  },
   "readme": {
     "enabled": true,
     "path": "F:\\idea-workspase-skills\\README.md",

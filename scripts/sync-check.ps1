@@ -796,6 +796,177 @@ function Add-McpRegistration {
     }
 }
 
+# ---------- hooksSync: Claude hooks -> per-end hook registration sync ----------
+# Source of truth = the hooks section of Claude settings.json (only place hooks
+# are hand-maintained). ZCode executes hooks ONLY from ~/.zcode/cli/config.json
+# (hooks.events + "enabled": true); its legacy Claude-settings loader lists
+# entries but never runs them, and ~/.zcode/settings.json is not read at all.
+# Codex runs hooks from config.toml with per-entry trusted_hash, so it is
+# check-only here (auto-rewriting would break trust and need manual re-accept).
+
+function Get-HooksSyncCfg {
+    param([object]$Cfg)
+    if ($Cfg.PSObject.Properties.Name -contains 'hooksSync') { return $Cfg.hooksSync }
+    return $null
+}
+
+function Get-FlattenedSourceHooks {
+    # Flatten the source hooks section into one entry per hook command.
+    param([object]$Hc)
+    $srcPath = [string]$Hc.source.file
+    if (-not (Test-Path -LiteralPath $srcPath)) {
+        Add-Issue 'hooks-sync' 'ERROR' 'HooksSourceMissing' "source settings missing: $srcPath" $false
+        return $null
+    }
+    $src = Get-Content -LiteralPath $srcPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $secProp = $src.PSObject.Properties[[string]$Hc.source.section]
+    if (-not $secProp) { return @() }
+    $flat = @()
+    foreach ($evProp in $secProp.Value.PSObject.Properties) {
+        $ev = $evProp.Name
+        foreach ($grp in @($evProp.Value)) {
+            $matcher = $null
+            if ($grp.PSObject.Properties['matcher'] -and $grp.matcher) { $matcher = [string]$grp.matcher }
+            foreach ($h in @($grp.hooks)) {
+                if (-not $h -or -not $h.command) { continue }
+                $tmo = $null
+                if ($h.PSObject.Properties['timeoutMs'] -and $null -ne $h.timeoutMs) { $tmo = $h.timeoutMs }
+                elseif ($h.PSObject.Properties['timeout'] -and $null -ne $h.timeout) { $tmo = $h.timeout }
+                $flat += @{ event = $ev; matcher = $matcher; type = [string]$h.type; command = [string]$h.command; timeoutVal = $tmo }
+            }
+        }
+    }
+    return , $flat
+}
+
+function Convert-HooksForEnd {
+    # Delegate filtering/rewriting/form conversion to hooks-convert.js (quote
+    # handling in PS 5.1 command lines is fragile; the JS helper owns the logic).
+    param([object]$Cfg, [object]$End, [object[]]$Flat, [string]$EndName)
+    # PS 5.1 ConvertFrom-Json reads empty JSON arrays as $null; @($null) would
+    # smuggle a null element into the JSON we emit - normalize here.
+    function As-Arr([object]$v) { if ($null -eq $v) { return @() } return @($v) }
+    $in = @{
+        entries             = @($Flat | ForEach-Object { @{ event = $_.event; matcher = $_.matcher; type = $_.type; command = $_.command; timeout = $_.timeoutVal } })
+        supportedEvents     = As-Arr $Cfg.supportedEvents
+        dropEvents          = As-Arr $End.dropEvents
+        dropToolsInMatcher  = As-Arr $End.dropToolsInMatcher
+        rewrites            = As-Arr $End.rewrite
+        excludePatterns     = As-Arr $End.excludeCommandPatterns
+        preferredType       = [string]$End.preferredType
+    }
+    $inFile = Join-Path $script:LogDir 'hooks-convert-input.json'
+    Write-NoBomUtf8 -Path $inFile -Text ($in | ConvertTo-Json -Depth 6)
+    $out = & node (Join-Path $script:ScriptDir 'hooks-convert.js') $inFile 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Add-Issue "hooks-sync/$EndName" 'ERROR' 'HooksConvertFailed' ("hooks-convert.js failed: {0}" -f (($out | Out-String).Trim())) $false
+        return $null
+    }
+    # keep the raw JSON text too: feeding the PS object through ConvertTo-Json
+    # again would double-escape backslashes (PS 5.1 over-escaping), so the fix
+    # pass hands the converter's own output straight to the writer helper
+    $raw = ($out | Out-String).Trim()
+    try { return @{ Obj = ($raw | ConvertFrom-Json); Raw = $raw } }
+    catch {
+        Add-Issue "hooks-sync/$EndName" 'ERROR' 'HooksConvertInvalid' "hooks-convert.js output is not valid JSON" $false
+        return $null
+    }
+}
+
+function Test-ZcodeHooksEnd {
+    param([string]$EndName, [object]$End, [object]$Converted)
+    $file = [string]$End.file
+    if (-not (Test-Path -LiteralPath $file)) {
+        Add-Issue "hooks-sync/$EndName" 'ERROR' 'HooksFileMissing' "target file missing: $file" $false
+        return
+    }
+    $json = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json
+    $existing = @()
+    if ($json.hooks -and $json.hooks.events) {
+        foreach ($evProp in $json.hooks.events.PSObject.Properties) {
+            foreach ($grp in @($evProp.Value)) {
+                $m = ''
+                if ($grp.PSObject.Properties['matcher'] -and $grp.matcher) { $m = [string]$grp.matcher }
+                foreach ($h in @($grp.hooks)) {
+                    if (-not $h) { continue }
+                    $a = @()
+                    if ($h.PSObject.Properties['args'] -and $h.args) { $a = @($h.args | ForEach-Object { [string]$_ }) }
+                    $existing += @{ event = $evProp.Name; matcher = $m; args = $a }
+                }
+            }
+        }
+    }
+    if ($json.hooks -and ($json.hooks.PSObject.Properties['enabled']) -and ($json.hooks.enabled -ne $true)) {
+        Add-Issue "hooks-sync/$EndName" 'ERROR' 'HooksRunnerDisabled' "hooks.enabled is not true in $file (config-file hooks are skipped entirely)" ([bool]$End.fixable) -LinkName $EndName
+    }
+    foreach ($e in @($Converted.entries)) {
+        $expArgs = @($e.args | ForEach-Object { [string]$_ })
+        $hit = $existing | Where-Object {
+            $_.event -eq $e.event -and (($_.matcher + '') -eq ([string]$e.matcher)) -and (@($_.args) -contains [string]$e.key)
+        } | Select-Object -First 1
+        if (-not $hit) {
+            Add-Issue "hooks-sync/$EndName" 'ERROR' 'HookMissing' "$($e.event) [$($e.matcher)]: $(Split-Path -Leaf ([string]$e.key)) not registered in $(Split-Path -Leaf $file)" ([bool]$End.fixable) -LinkName $EndName
+            continue
+        }
+        if ((@($hit.args) -join "`n") -ne ($expArgs -join "`n")) {
+            Add-Issue "hooks-sync/$EndName" 'ERROR' 'HookDrift' "$($e.event) [$($e.matcher)]: $(Split-Path -Leaf ([string]$e.key)) args drift (got: $($hit.args -join ' '))" ([bool]$End.fixable) -LinkName $EndName
+        }
+    }
+}
+
+function Test-CodexHooksEnd {
+    # Codex has per-hook trusted_hash; rewriting config.toml would invalidate
+    # trust, so this end only reports missing script references.
+    param([string]$EndName, [object]$End, [object]$Converted)
+    $file = [string]$End.file
+    if (-not (Test-Path -LiteralPath $file)) {
+        Add-Issue "hooks-sync/$EndName" 'ERROR' 'HooksFileMissing' "target file missing: $file" $false
+        return
+    }
+    $text = Get-Content -LiteralPath $file -Raw -Encoding UTF8
+    foreach ($e in @($Converted.entries)) {
+        $leaf = Split-Path -Leaf ([string]$e.key)
+        if ($text -notlike "*$leaf*") {
+            Add-Issue "hooks-sync/$EndName" 'WARN' 'CodexHookMissing' "$($e.event): $leaf not referenced in config.toml (trusted_hash, sync manually)" $false -LinkName $EndName
+        }
+    }
+}
+
+function Test-HooksSync {
+    param([object]$Cfg)
+    $c = Get-HooksSyncCfg $Cfg
+    if (-not $c -or -not $c.enabled) { return }
+    $flat = Get-FlattenedSourceHooks $c
+    if ($null -eq $flat) { return }
+    foreach ($endProp in $c.ends.PSObject.Properties) {
+        $endName = $endProp.Name
+        $end = $endProp.Value
+        if (-not $end.enabled) { continue }
+        $conv = Convert-HooksForEnd -Cfg $c -End $end -Flat $flat -EndName $endName
+        if ($null -eq $conv) { continue }
+        switch ([string]$end.type) {
+            'zcode-json-hooks' { Test-ZcodeHooksEnd -EndName $endName -End $end -Converted $conv.Obj }
+            'codex-toml-hooks' { Test-CodexHooksEnd -EndName $endName -End $end -Converted $conv.Obj }
+        }
+    }
+}
+
+function Invoke-ZcodeHooksFix {
+    # Repair = merge the FULL converted entry set (idempotent upsert in the
+    # helper), then rely on the re-check pass to confirm.
+    param([object]$Cfg, [string]$EndName)
+    $c = Get-HooksSyncCfg $Cfg
+    $end = $c.ends.PSObject.Properties[$EndName].Value
+    $flat = Get-FlattenedSourceHooks $c
+    if ($null -eq $flat) { throw "hooks source unavailable" }
+    $conv = Convert-HooksForEnd -Cfg $c -End $end -Flat $flat -EndName $EndName
+    if ($null -eq $conv) { throw "hook conversion failed" }
+    $specFile = Join-Path $script:LogDir 'hooks-spec.json'
+    Write-NoBomUtf8 -Path $specFile -Text ($conv.Raw + "`r`n")
+    $out = & node (Join-Path $script:ScriptDir 'register-zcode-hooks.js') ([string]$end.file) $specFile 2>&1
+    if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*ZCODE_HOOKS_OK*') { throw "zcode hooks register failed: $out" }
+}
+
 # ---------- check 5: repo root README skill-list section ----------
 
 # Chinese full stop as Unicode code point (source must stay ASCII)
@@ -1294,6 +1465,21 @@ function Apply-Fixes {
                     Write-Host "  [FIXED] mcp-sync: rewrote '$($iss.LinkName)' to match source form"
                     $script:Fixed++
                 }
+                'HookMissing' {
+                    Invoke-ZcodeHooksFix $Cfg $iss.LinkName
+                    Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): merged missing hooks into ZCode config"
+                    $script:Fixed++
+                }
+                'HookDrift' {
+                    Invoke-ZcodeHooksFix $Cfg $iss.LinkName
+                    Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): rewrote drifted hooks in ZCode config"
+                    $script:Fixed++
+                }
+                'HooksRunnerDisabled' {
+                    Invoke-ZcodeHooksFix $Cfg $iss.LinkName
+                    Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): set hooks.enabled = true in ZCode config"
+                    $script:Fixed++
+                }
                 'SshMcpLegacyRegistration' {
                     $sc = Get-SshCfg $Cfg
                     $endProp = $sc.registration.ends.PSObject.Properties[$iss.LinkName]
@@ -1357,6 +1543,7 @@ function Invoke-AllChecks {
     Test-SshMcpJunction $Cfg
     Test-SshMcpRegistration $Cfg
     Test-McpSync $Cfg
+    Test-HooksSync $Cfg
     Test-Readme $Cfg $Expected
     Test-JunctionDocs $Cfg $Expected
     Test-RelatedLinks $Cfg $Expected
