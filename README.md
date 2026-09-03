@@ -12,6 +12,7 @@
 - [deepseek-harness-settings-curator](https://github.com/huzhw/deepseek-harness-settings-curator)：DSH 模型配置梳理
 - [reread-rules](https://github.com/huzhw/reread-rules-skill)：重载 CLAUDE.md / AGENTS.md 规则
 - [coding-rules](https://github.com/huzhw/coding-rules)：编码规则库（独立仓库，非 skill）
+- [service-manager](https://github.com/huzhw/service-manager)：服务管理器（关联仓库，非 skill）
 
 ---
 
