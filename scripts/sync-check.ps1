@@ -31,6 +31,7 @@
 #>
 param(
     [switch]$Fix,
+    [switch]$FixHardlink,
     [switch]$Quiet,
     [string]$ConfigPath
 )
@@ -233,6 +234,123 @@ function Test-RulesHardlink {
                 Add-Issue 'rules' 'ERROR' 'HardlinkGroupSplit' "$a and $b are NOT in the same hardlink group (content may have forked; decide which copy wins manually then rebuild hardlinks; $info)" $false
             }
         }
+    }
+}
+
+# ---------- check 13: manual-copy mirrors of the rules group ----------
+# Cross-volume copies (e.g. coding-rules\CLAUDE.md on F:) can never join the
+# hardlink group, so they are synced by copy. A mirror must match the group
+# body EXCEPT its own leading <!-- ... --> header comment, which documents its
+# mirror status and differs by design. Compare core-vs-core: strip the leading
+# comment block from BOTH sides (no-op when a side has none).
+
+function Get-RulesCoreText {
+    param([string]$Path, [bool]$StripHeaderComment)
+    $text = [IO.File]::ReadAllText($Path)
+    if ($StripHeaderComment) {
+        $m = [regex]::Match($text, '(?s)\A\s*<!--.*?-->\s*')
+        if ($m.Success) { $text = $text.Substring($m.Length) }
+    }
+    return $text.Trim()
+}
+
+function Get-RulesGroupSource {
+    # group source = first existing group path (canonical: the claude end)
+    param([object]$Cfg)
+    foreach ($p in @($Cfg.rulesHardlink.paths)) {
+        if (Test-Path -LiteralPath $p) { return $p }
+    }
+    return $null
+}
+
+function Test-RulesManualCopy {
+    param([object]$Cfg)
+    $rh = $Cfg.rulesHardlink
+    if (-not $rh.enabled) { return }
+    $copies = @()
+    if ($rh.PSObject.Properties['manualCopies']) { $copies = @($rh.manualCopies) }
+    if ($copies.Count -eq 0) { return }
+    $src = Get-RulesGroupSource $Cfg
+    if (-not $src) { return } # RulesFileMissing already reported by check 3
+    $srcText = Get-RulesCoreText -Path $src -StripHeaderComment $true
+    foreach ($c in $copies) {
+        $cp = [string]$c.path
+        $strip = $true
+        if ($c.PSObject.Properties['stripHeaderComment'] -and $c.stripHeaderComment -eq $false) { $strip = $false }
+        if (-not (Test-Path -LiteralPath $cp)) {
+            # re-creating the mirror needs its own header comment = content
+            # decision, so NOT auto-fixable; drift below IS auto-fixable
+            Add-Issue 'rules' 'ERROR' 'RulesCopyMissing' "$cp (manual mirror of the rules group is gone; recreate it with its own header, then -Fix keeps it in sync; group source: $src)" $false
+            continue
+        }
+        $cpText = Get-RulesCoreText -Path $cp -StripHeaderComment $strip
+        if ($cpText -ne $srcText) {
+            Add-Issue 'rules' 'ERROR' 'RulesCopyDrift' "$cp body differs from the rules group body (group source: $src); -Fix resyncs the copy while keeping its own header comment" $true -LinkPath $cp -ExpectedDir $src
+        }
+    }
+}
+
+function Fix-RulesCopy {
+    # overwrite the mirror body from the group, PRESERVING the mirror's own
+    # leading <!-- ... --> header comment (identity doc, differs by design)
+    param([object]$Cfg, [string]$CopyPath)
+    $src = Get-RulesGroupSource $Cfg
+    if (-not $src) { return $false }
+    $srcText = Get-RulesCoreText -Path $src -StripHeaderComment $true
+    $header = ''
+    $cpText = [IO.File]::ReadAllText($CopyPath)
+    $m = [regex]::Match($cpText, '(?s)\A\s*<!--.*?-->\s*')
+    if ($m.Success) { $header = $cpText.Substring(0, $m.Length).TrimEnd() + "`r`n`r`n" }
+    Write-NoBomUtf8 -Path $CopyPath -Text ($header + $srcText + "`r`n")
+    return $true
+}
+
+# ---------- -FixHardlink: hash-guarded hardlink group rebuild ----------
+# The red line says a broken group is never auto-merged (content may have
+# forked). This mode carves out the provably-safe subset: when ALL group files
+# exist and ALL hashes are identical, the break can only come from a
+# replace-write editor re-saving one end as a standalone copy - rebuilding
+# links is then a pure mechanical op with zero content decisions. Any hash
+# mismatch = possible fork = refuse and stay report-only.
+
+function Repair-RulesHardlinkGroup {
+    param([object]$Cfg)
+    $rh = $Cfg.rulesHardlink
+    if (-not $rh.enabled) { return }
+    $paths = @($rh.paths)
+    foreach ($p in $paths) {
+        if (-not (Test-Path -LiteralPath $p)) {
+            Write-Host "  [SKIP] hardlink rebuild: missing $p (nothing to rebuild from)" -ForegroundColor Yellow
+            return
+        }
+    }
+    $hashes = @($paths | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash })
+    $unique = @($hashes | Sort-Object -Unique)
+    if ($unique.Count -ne 1) {
+        Write-Host ("  [REFUSED] hardlink rebuild: content diverged ({0} distinct hashes); merge manually, decide which copy wins, then rerun" -f $unique.Count) -ForegroundColor Yellow
+        return
+    }
+    $src = $paths[0]
+    $repaired = 0
+    foreach ($p in $paths) {
+        if ($p -eq $src) { continue }
+        $needsFix = $true
+        $item = Get-Item -LiteralPath $p -Force
+        if ($item.LinkType -eq 'HardLink') {
+            $targets = @($item.Target | ForEach-Object { Normalize-Path ([string]$_) })
+            if ($targets -contains (Normalize-Path $src)) { $needsFix = $false }
+        }
+        if ($needsFix) {
+            Remove-Item -LiteralPath $p -Force
+            fsutil hardlink create $p $src | Out-Null
+            Write-Host "  [FIXED] rules: relinked $p -> $src (hash-verified identical)"
+            $repaired++
+        }
+    }
+    if ($repaired -gt 0) {
+        $script:Fixed += $repaired
+    } else {
+        Write-Host "  [OK] hardlink group already intact (hash-verified)" -ForegroundColor Green
     }
 }
 
@@ -1414,6 +1532,12 @@ function Apply-Fixes {
                     Write-Host "  [FIXED] $($iss.LinkName): added missing ends in JUNCTION doc"
                     $script:Fixed++
                 }
+                'RulesCopyDrift' {
+                    if (Fix-RulesCopy $Cfg $iss.LinkPath) {
+                        Write-Host "  [FIXED] rules: resynced manual copy $($iss.LinkPath) from the group (own header preserved)"
+                        $script:Fixed++
+                    }
+                }
                 'RelatedLinksMissing' {
                     Fix-RelatedLinks $Cfg $iss.LinkName
                     Write-Host "  [FIXED] $($iss.LinkName): filled missing related links in README"
@@ -1540,6 +1664,7 @@ function Invoke-AllChecks {
         }
     }
     Test-RulesHardlink $Cfg
+    Test-RulesManualCopy $Cfg
     Test-SshMcpJunction $Cfg
     Test-SshMcpRegistration $Cfg
     Test-McpSync $Cfg
@@ -1550,6 +1675,12 @@ function Invoke-AllChecks {
 }
 
 Invoke-AllChecks -Cfg $cfg -Expected $expected -Found $found
+
+# hash-guarded hardlink group rebuild (-FixHardlink); on refusal stays report-only
+if ($FixHardlink) {
+    Repair-RulesHardlinkGroup -Cfg $cfg
+    Invoke-AllChecks -Cfg $cfg -Expected $expected -Found $found
+}
 
 # re-check after fixes
 if ($Fix) {
@@ -1569,10 +1700,10 @@ $pass = ($errCount -eq 0)
 if (-not $Quiet) {
     Write-Host ""
     Write-Host "=== agent-config-sync-check  $stamp ==="
-    Write-Host ("Expected skills: {0} | Agents: {1} | Fix mode: {2}" -f $expected.Count, $agentsChecked, ($(if ($Fix) { 'YES' } else { 'NO' })))
+    Write-Host ("Expected skills: {0} | Agents: {1} | Fix: {2} | FixHardlink: {3}" -f $expected.Count, $agentsChecked, ($(if ($Fix) { 'YES' } else { 'NO' })), ($(if ($FixHardlink) { 'YES' } else { 'NO' })))
     Write-Host ""
     if ($Issues.Count -eq 0) {
-        Write-Host "ALL GREEN: links / dangling / hardlink group / frontmatter / README / redline / ssh-mcp all pass" -ForegroundColor Green
+        Write-Host "ALL GREEN: links / dangling / hardlink group / manual copies / frontmatter / README / redline / ssh-mcp all pass" -ForegroundColor Green
     } else {
         foreach ($iss in ($Issues | Sort-Object Agent, Type)) {
             $color = if ($iss.Level -eq 'ERROR') { 'Red' } else { 'Yellow' }
@@ -1593,9 +1724,11 @@ foreach ($iss in $Issues) {
 }
 $fixMode = 'NO'
 if ($Fix) { $fixMode = 'YES' }
+$hlMode = 'NO'
+if ($FixHardlink) { $hlMode = 'YES' }
 $verdict = 'FAIL'
 if ($pass) { $verdict = 'PASS' }
-$summary = "[{0}] agent-config-sync-check  skills={1} agents={2} fix={3} errors={4} warnings={5} fixed={6} result={7}" -f $stamp, $expected.Count, $agentsChecked, $fixMode, $errCount, $warnCount, $script:Fixed, $verdict
+$summary = "[{0}] agent-config-sync-check  skills={1} agents={2} fix={3} fixhardlink={4} errors={5} warnings={6} fixed={7} result={8}" -f $stamp, $expected.Count, $agentsChecked, $fixMode, $hlMode, $errCount, $warnCount, $script:Fixed, $verdict
 $logText = @("") + $summary
 if ($errLines.Count -gt 0) { $logText = $logText + $errLines }
 Append-NoBomUtf8 -Path (Join-Path $script:LogDir 'sync-check.log') -Text (($logText -join "`r`n") + "`r`n")

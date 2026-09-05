@@ -14,6 +14,12 @@
       "C:\\Users\\Administrator\\.dsh\\AGENTS.md",
       "C:\\Users\\Administrator\\.codex\\AGENTS.md",
       "C:\\Users\\Administrator\\.zcode\\AGENTS.md"
+    ],
+    "manualCopies": [
+      {
+        "path": "F:\\idea-workspase-skills\\coding-rules\\CLAUDE.md",
+        "stripHeaderComment": true
+      }
     ]
   },
   "sshMcpConfig": {
