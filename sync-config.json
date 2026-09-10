@@ -123,7 +123,6 @@
   },
   "githubRepos": {
     "agent-config-sync-check": "agent-config-sync-check",
-    "claude-code-token-3000": "claude-code-token-3000-skill",
     "git-commit": "git-commit-skill",
     "code-check": "code-check-skill",
     "daily-merge-gitlab-excel": "daily-merge-gitlab-excel-skill",
@@ -139,7 +138,6 @@
   },
   "relatedSkills": {
     "agent-config-sync-check": "四端同步守卫：链接/硬链接/README 同步检查与修复",
-    "claude-code-token-3000": "Claude Code API Token 切换",
     "git-commit": "Git 提交规范",
     "code-check": "增量代码隐患检查",
     "daily-merge-gitlab-excel": "日报合并（手动兜底，已由日报管家接管，不推荐）",
