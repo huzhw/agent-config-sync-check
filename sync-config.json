@@ -64,12 +64,15 @@
       {
         "name": "chrome-devtools",
         "command": "npx",
-        "args": ["-y", "chrome-devtools-mcp@latest", "--executablePath=C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"],
+        "args": ["--executablePath=C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"],
         "perEndCommand": {
           "dsh": "node"
         },
         "perEndArgsPrepend": {
-          "dsh": ["F:/nodejs/node_modules/npm/bin/npx-cli.js"]
+          "claude": ["-y", "chrome-devtools-mcp@latest"],
+          "codex": ["-y", "chrome-devtools-mcp@latest"],
+          "zcode": ["-y", "chrome-devtools-mcp@latest"],
+          "dsh": ["C:/Users/Administrator/.dsh/chrome-devtools-mcp-launcher.js"]
         },
         "perEndArgs": {
           "claude": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-claude"],
