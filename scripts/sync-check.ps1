@@ -712,7 +712,22 @@ for (const k of Object.keys(ms)) {
 }
 console.log(JSON.stringify(out));
 '@
-    return @($js, $py, $zjs)
+    $cjs = Join-Path $script:LogDir 'parse-claude.js'
+    Write-NoBomUtf8 -Path $cjs -Text @'
+// usage: node parse-claude.js <claude.json>  (top-level mcpServers only)
+const fs = require("fs");
+const d = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const ms = d.mcpServers || {};
+const out = {};
+for (const k of Object.keys(ms)) {
+  out[k] = {
+    command: ms[k].command ? String(ms[k].command) : "",
+    args: (ms[k].args || []).map(String)
+  };
+}
+console.log(JSON.stringify(out));
+'@
+    return @($js, $py, $zjs, $cjs)
 }
 
 function Get-McpParsedEnd {
@@ -727,6 +742,10 @@ function Get-McpParsedEnd {
     } elseif ($Type -eq 'zcode-json') {
         $out = & node $assets[2] $File 2>&1
         if ($LASTEXITCODE -ne 0) { throw "zcode config parse failed: $out" }
+        return ($out | ConvertFrom-Json)
+    } elseif ($Type -eq 'claude-json') {
+        $out = & node $assets[3] $File 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "claude config parse failed: $out" }
         return ($out | ConvertFrom-Json)
     } else {
         $out = & ($script:McpPyPath) $assets[1] $File 2>&1
@@ -786,6 +805,25 @@ function Remove-McpDshChild {
     return $true
 }
 
+function Get-McpEffectiveCommandArgs {
+    # Effective command/args for one end = server-level command+args overlaid by
+    # optional perEndCommand / perEndArgsPrepend / perEndArgs maps. Keeps
+    # "one canonical declaration" sync while letting each agent own its variant
+    # (chrome-devtools: per-agent --userDataDir so four agents never fight over
+    # one Chromium profile lock; DSH: node+npx-cli.js because the DSH engine
+    # cannot spawn .cmd shims like npx directly).
+    param([object]$Srv, [string]$EndName)
+    $command = [string]$Srv.command
+    $argList = @($Srv.args | ForEach-Object { [string]$_ })
+    $ov = $Srv.PSObject.Properties['perEndCommand']
+    if ($ov) { $p = $ov.Value.PSObject.Properties[$EndName]; if ($p) { $command = [string]$p.Value } }
+    $ov = $Srv.PSObject.Properties['perEndArgsPrepend']
+    if ($ov) { $p = $ov.Value.PSObject.Properties[$EndName]; if ($p) { $argList = @($p.Value | ForEach-Object { [string]$_ }) + $argList } }
+    $ov = $Srv.PSObject.Properties['perEndArgs']
+    if ($ov) { $p = $ov.Value.PSObject.Properties[$EndName]; if ($p) { $argList = $argList + @($p.Value | ForEach-Object { [string]$_ }) } }
+    return @{ command = $command; args = $argList }
+}
+
 function Test-McpSync {
     param([object]$Cfg)
     $c = Get-McpSyncCfg $Cfg
@@ -794,7 +832,7 @@ function Test-McpSync {
     $script:McpPyPath = [string]$c.pythonPath
     $parsed = @{}
     foreach ($srv in @($c.servers)) {
-        foreach ($endName in @('dsh', 'codex', 'zcode')) {
+        foreach ($endName in @('claude', 'dsh', 'codex', 'zcode')) {
             $endProp = $srv.PSObject.Properties[$endName]
             if (-not $endProp) { continue }
             $end = $endProp.Value
@@ -815,12 +853,16 @@ function Test-McpSync {
     }
     foreach ($srv in @($c.servers)) {
         $name = [string]$srv.name
-        $expCommand = [string]$srv.command
-        $expArgs = @($srv.args | ForEach-Object { [string]$_ })
-        foreach ($endName in @('dsh', 'codex', 'zcode')) {
+        foreach ($endName in @('claude', 'dsh', 'codex', 'zcode')) {
             $endProp = $srv.PSObject.Properties[$endName]
             if (-not $endProp) { continue }
             $end = $endProp.Value
+            $fixable = $true
+            $fp = $end.PSObject.Properties['fixable']
+            if ($fp) { $fixable = [bool]$fp.Value }
+            $eff = Get-McpEffectiveCommandArgs $srv $endName
+            $expCommand = $eff.command
+            $expArgs = $eff.args
             $key = [string]$end.type + '|' + [string]$end.file
             if (-not $parsed[$key]) { continue }
             $agent = "mcp-sync/$name/$endName"
@@ -828,30 +870,77 @@ function Test-McpSync {
             if ([string]$end.type -eq 'dsh-patch') {
                 $e = $parsed[$key].PSObject.Properties[[string]$end.id]
                 if (-not $e) {
-                    Add-Issue $agent 'ERROR' 'McpMissing' "no '$($end.id)' insert entry in $($end.file)" $true -LinkName $link
+                    Add-Issue $agent 'ERROR' 'McpMissing' "no '$($end.id)' insert entry in $($end.file)" $fixable -LinkName $link
                     continue
                 }
                 $got = $e.Value
                 if ($got.serverName -ne $name) {
-                    Add-Issue $agent 'ERROR' 'McpDrift' "'$($end.id)' serverName mismatch (got: $($got.serverName))" $true -LinkName $link
+                    Add-Issue $agent 'ERROR' 'McpDrift' "'$($end.id)' serverName mismatch (got: $($got.serverName))" $fixable -LinkName $link
                     continue
                 }
             } else {
                 $e = $parsed[$key].PSObject.Properties[$name]
                 if (-not $e) {
-                    $where = if ([string]$end.type -eq 'zcode-json') { "no mcp.servers.$name in $($end.file)" } else { "no [mcp_servers.$name] section in $($end.file)" }
-                    Add-Issue $agent 'ERROR' 'McpMissing' $where $true -LinkName $link
+                    $where = if ([string]$end.type -eq 'zcode-json') { "no mcp.servers.$name in $($end.file)" } elseif ([string]$end.type -eq 'claude-json') { "no mcpServers.$name in $($end.file)" } else { "no [mcp_servers.$name] section in $($end.file)" }
+                    Add-Issue $agent 'ERROR' 'McpMissing' $where $fixable -LinkName $link
                     continue
                 }
                 $got = $e.Value
             }
             if ($got.command -ne $expCommand) {
-                Add-Issue $agent 'ERROR' 'McpDrift' "command mismatch (got: $($got.command), want: $expCommand)" $true -LinkName $link
+                Add-Issue $agent 'ERROR' 'McpDrift' "command mismatch (got: $($got.command), want: $expCommand)" $fixable -LinkName $link
                 continue
             }
             if ((@($got.args) -join "`n") -ne ($expArgs -join "`n")) {
-                Add-Issue $agent 'ERROR' 'McpDrift' "args mismatch (got: $($got.args -join ' '))" $true -LinkName $link
+                Add-Issue $agent 'ERROR' 'McpDrift' "args mismatch (got: $($got.args -join ' '))" $fixable -LinkName $link
             }
+        }
+    }
+}
+
+function Test-McpUserDataDirUnique {
+    # Check item 14: chrome-devtools userDataDir must be UNIQUE per end.
+    # Chromium allows a single live instance per profile dir - two agents
+    # pointing at the same --userDataDir means whoever launches its browser
+    # second exits instantly ("Target closed") and stays dead until its agent
+    # restarts. 2026-09-12 实战：CC/Codex/ZCode/DSH 四端共用一个
+    # "User Data MCP" 目录，DSH 的浏览器长期被先到者顶死。
+    param([object]$Cfg)
+    $c = Get-McpSyncCfg $Cfg
+    if (-not $c -or -not $c.enabled) { return }
+    $srv = @($c.servers | Where-Object { $_.name -eq 'chrome-devtools' })[0]
+    if (-not $srv) { return }
+    $owner = @{}
+    foreach ($endName in @('claude', 'dsh', 'codex', 'zcode')) {
+        $endProp = $srv.PSObject.Properties[$endName]
+        if (-not $endProp) { continue }
+        $end = $endProp.Value
+        $file = [string]$end.file
+        if (-not (Test-Path -LiteralPath $file)) {
+            Add-Issue "mcp-sync/chrome-devtools/$endName" 'ERROR' 'McpFileMissing' "target file missing: $file" $false
+            continue
+        }
+        try { $parsed = Get-McpParsedEnd ([string]$end.type) $file } catch {
+            Add-Issue "mcp-sync/chrome-devtools/$endName" 'ERROR' 'McpParseFailed' ("{0}" -f $_.Exception.Message) $false
+            continue
+        }
+        $e = $parsed.PSObject.Properties[[string]$end.id]
+        if (-not $e) { $e = $parsed.PSObject.Properties['chrome-devtools'] }
+        if (-not $e) { continue }
+        $dir = $null
+        foreach ($a in @($e.Value.args)) {
+            $s = [string]$a
+            if ($s -like '--userDataDir=*') { $dir = $s.Substring('--userDataDir='.Length) }
+        }
+        if (-not $dir) {
+            Add-Issue "mcp-sync/chrome-devtools/$endName" 'WARN' 'McpUserDataDirAbsent' "no --userDataDir in chrome-devtools args (isolated/headless is fine only if intended)" $false
+            continue
+        }
+        $key = $dir.ToLower()
+        if ($owner.ContainsKey($key)) {
+            Add-Issue "mcp-sync/chrome-devtools/$endName" 'ERROR' 'McpUserDataDirDuplicate' "userDataDir '$dir' also used by end '$($owner[$key])' - chromium single-instance per profile, the second agent's browser dies instantly" $false
+        } else {
+            $owner[$key] = $endName
         }
     }
 }
@@ -864,6 +953,10 @@ function Add-McpRegistration {
     $srv = @($c.servers | Where-Object { $_.name -eq $ServerName })[0]
     if (-not $srv) { throw "unknown mcp-sync server: $ServerName" }
     $end = $srv.PSObject.Properties[$EndName].Value
+    if ([string]$end.type -eq 'claude-json') { throw "claude-json end is check-only (fixable:false) - edit .claude.json manually" }
+    $eff = Get-McpEffectiveCommandArgs $srv $EndName
+    $command = $eff.command
+    $argList = $eff.args
     $file = [string]$end.file
     $bak = Backup-ConfigFile $file
     try {
@@ -877,17 +970,17 @@ function Add-McpRegistration {
                 '    config:' + $nl +
                 "      serverName: $([string]$srv.name)" + $nl +
                 '      transport: stdio' + $nl +
-                "      command: $([string]$srv.command)" + $nl
-            foreach ($l in (ConvertTo-YamlArgLines $srv.args '      ')) { $block += $l + $nl }
+                "      command: $command" + $nl
+            foreach ($l in (ConvertTo-YamlArgLines $argList '      ')) { $block += $l + $nl }
             Append-NoBomUtf8 -Path $file -Text $block
             $parsed = Get-McpParsedEnd 'dsh-patch' $file
             $e = $parsed.PSObject.Properties[[string]$end.id]
             if (-not $e) { throw "post-append verify failed: entry not found" }
-            if ($e.Value.command -ne [string]$srv.command) { throw "post-append verify failed: command mismatch" }
+            if ($e.Value.command -ne $command) { throw "post-append verify failed: command mismatch" }
         } elseif ([string]$end.type -eq 'zcode-json') {
             $helper = Join-Path $script:ScriptDir 'register-zcode.js'
-            $argStrs = @($srv.args | ForEach-Object { [string]$_ })
-            $out = & node $helper $file ([string]$srv.name) ([string]$srv.command) @argStrs 2>&1
+            $argStrs = @($argList | ForEach-Object { [string]$_ })
+            $out = & node $helper $file ([string]$srv.name) $command @argStrs 2>&1
             if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*ZCODE_REGISTER_OK*') { throw "zcode register failed: $out" }
             $parsed = Get-McpParsedEnd 'zcode-json' $file
             $e = $parsed.PSObject.Properties[[string]$srv.name]
@@ -897,13 +990,13 @@ function Add-McpRegistration {
             $nl = "`r`n"
             $block = $nl +
                 "[mcp_servers.$([string]$srv.name)]" + $nl +
-                "command = `"$([string]$srv.command)`"" + $nl +
-                "args = $(ConvertTo-TomlArgArray $srv.args)" + $nl
+                "command = `"$command`"" + $nl +
+                "args = $(ConvertTo-TomlArgArray $argList)" + $nl
             Append-NoBomUtf8 -Path $file -Text $block
             $parsed = Get-McpParsedEnd 'codex-toml' $file
             $e = $parsed.PSObject.Properties[[string]$srv.name]
             if (-not $e) { throw "post-append verify failed: section not found" }
-            if ($e.Value.command -ne [string]$srv.command) { throw "post-append verify failed: command mismatch" }
+            if ($e.Value.command -ne $command) { throw "post-append verify failed: command mismatch" }
         }
         # backup is kept on purpose (*.bak-sshmcp-* never enters git)
     } catch {
@@ -1668,6 +1761,7 @@ function Invoke-AllChecks {
     Test-SshMcpJunction $Cfg
     Test-SshMcpRegistration $Cfg
     Test-McpSync $Cfg
+    Test-McpUserDataDirUnique $Cfg
     Test-HooksSync $Cfg
     Test-Readme $Cfg $Expected
     Test-JunctionDocs $Cfg $Expected
