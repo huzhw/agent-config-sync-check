@@ -903,8 +903,9 @@ function Test-McpUserDataDirUnique {
     # Chromium allows a single live instance per profile dir - two agents
     # pointing at the same --userDataDir means whoever launches its browser
     # second exits instantly ("Target closed") and stays dead until its agent
-    # restarts. 2026-09-12 实战：CC/Codex/ZCode/DSH 四端共用一个
-    # "User Data MCP" 目录，DSH 的浏览器长期被先到者顶死。
+    # restarts. 2026-09-12 实战：曾四端共用一个 "User Data MCP" 目录互顶；同日
+    # 引擎升级后 DSH 端整体退役 chrome-devtools MCP（改用 dsh-builtin-browser
+    # 插件），本检查只覆盖登记端（CC/Codex/ZCode）。
     param([object]$Cfg)
     $c = Get-McpSyncCfg $Cfg
     if (-not $c -or -not $c.enabled) { return }

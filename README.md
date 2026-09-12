@@ -38,7 +38,7 @@
 | 11 | 通用 MCP 同步 | `sync-config.json` 的 `mcpSync.servers` 登记的 MCP（codegraph/dbx/chrome-devtools…）各端 command+args 解析级比对（node YAML / python tomllib / JSON，共享 insert 块也能识别）；支持 `perEndCommand`/`perEndArgsPrepend`/`perEndArgs` 按端覆盖（比对与修复都按生效值）；Claude 端 `.claude.json` 只读检查不自动写；缺失/漂移 -Fix 自动补齐重写；env 不跨端，带敏感值的学 ssh 用 launcher；http 型（idea）暂不支持 |
 | 12 | 防护 hooks 同步 | 源 = `~\.claude\settings.json` hooks 段；ZCode 落点 `~\.zcode\cli\config.json` 的 `hooks.events`（runner 须 `enabled: true`），经 `hooks-convert.js` 转换（丢 SessionEnd、去 MultiEdit、`--source=zcode` 改写、shell 串拆 process 型）；缺失/漂移 -Fix 幂等合并；Codex 端只报告（trusted_hash 机制不可自动改写） |
 | 13 | 规则手工副本 | 跨卷副本（`coding-rules\CLAUDE.md`，F 盘进不了硬链接组）登记在 `rulesHardlink.manualCopies`：剥掉副本自身开头 `<!-- -->` 头注释后正文须与组正文一致；漂移 -Fix 自动重写（保留其头注释），副本整份丢失不自动修（要先写身份头注释） |
-| 14 | chrome-devtools 目录唯一 | Chromium 同一 profile 目录只容一个活动实例，两端 `--userDataDir` 相同 = 谁后启动浏览器谁秒死（Target closed）。解析四端（含 `.claude.json`）chrome-devtools 的 userDataDir，重复报 `McpUserDataDirDuplicate`（只报告，目录分配看 `sync-config.json` 的 `perEndArgs`：claude/codex/zcode/dsh 各用 `User Data MCP-<端名>`）；无 userDataDir 报 WARN；DSH 端规范形态 = `node` + `npx-cli.js`（引擎 spawn 不了 `npx.cmd` 垫片） |
+| 14 | chrome-devtools 目录唯一 | Chromium 同一 profile 目录只容一个活动实例，两端 `--userDataDir` 相同 = 谁后启动浏览器谁秒死（Target closed）。按登记端（CC/Codex/ZCode；**DSH 端已弃用浏览器 MCP 改用 dsh-builtin-browser 插件**）解析各端 chrome-devtools 的 userDataDir，重复报 `McpUserDataDirDuplicate`（只报告，目录分配看 `sync-config.json` 的 `perEndArgs`：各端 `User Data MCP-<端名>`）；无 userDataDir 报 WARN |
 
 `.zcode` 里的中转链接（→ `.claude` 官方技能、→ `.codex\.system` 系统技能）只验"上游还在"，上游删了报死链，**只报告不自动修**。
 

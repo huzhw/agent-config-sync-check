@@ -65,23 +65,17 @@
         "name": "chrome-devtools",
         "command": "npx",
         "args": ["--executablePath=C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"],
-        "perEndCommand": {
-          "dsh": "node"
-        },
         "perEndArgsPrepend": {
           "claude": ["-y", "chrome-devtools-mcp@latest"],
           "codex": ["-y", "chrome-devtools-mcp@latest"],
-          "zcode": ["-y", "chrome-devtools-mcp@latest"],
-          "dsh": ["C:/Users/Administrator/.dsh/chrome-devtools-mcp-launcher.js"]
+          "zcode": ["-y", "chrome-devtools-mcp@latest"]
         },
         "perEndArgs": {
           "claude": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-claude"],
           "codex": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-codex"],
-          "zcode": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-zcode"],
-          "dsh": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-dsh"]
+          "zcode": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-zcode"]
         },
         "claude": { "type": "claude-json", "file": "C:\\Users\\Administrator\\.claude.json", "fixable": false },
-        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-chrome-devtools", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" }
       }
