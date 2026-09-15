@@ -138,10 +138,10 @@
     "daily-merge-gitlab-excel": "daily-merge-gitlab-excel-skill",
     "daily-record-gitlab-md": "daily-record-gitlab-md-skill",
     "daily-report-panel": "daily-report-panel",
+    "deepseek-harness-plugin-doctor": "deepseek-harness-plugin-doctor",
     "deepseek-harness-settings-curator": "deepseek-harness-settings-curator",
     "reread-rules": "reread-rules-skill",
-    "coding-rules": "coding-rules",
-    "service-manager": "service-manager"
+    "coding-rules": "coding-rules"
   },
   "repoRoots": {
     "git-commit": "F:\\idea-workspase-skills\\claude-git-commit-skill"
@@ -153,10 +153,10 @@
     "daily-merge-gitlab-excel": "日报合并（手动兜底，已由日报管家接管，不推荐）",
     "daily-record-gitlab-md": "日报记录（第一步）",
     "daily-report-panel": "日报管家（关联仓库，非 skill，自动合并/导出/发件）",
+    "deepseek-harness-plugin-doctor": "DSH 插件与升级体检医生",
     "deepseek-harness-settings-curator": "DSH 模型配置梳理",
     "reread-rules": "重载 CLAUDE.md / AGENTS.md 规则",
-    "coding-rules": "编码规则库（独立仓库，非 skill）",
-    "service-manager": "服务管理器（关联仓库，非 skill）"
+    "coding-rules": "编码规则库（独立仓库，非 skill）"
   },
   "redlineDirs": ["coding-rules"],
   "task": {
