@@ -127,7 +127,7 @@
         "preferredType": "process",
         "dropEvents": [],
         "dropToolsInMatcher": [],
-        "excludeCommandPatterns": ["rtk hook claude"],
+        "excludeCommandPatterns": ["rtk hook claude", "notify.cjs"],
         "rewrite": [
           { "match": "--source=claude", "replace": "--source=qoder" }
         ]
