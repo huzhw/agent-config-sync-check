@@ -10,6 +10,7 @@
 | 全局路径（junction，DSH） | `C:\Users\Administrator\.dsh\skills\agent-config-sync-check` |
 | 全局路径（junction，Codex） | `C:\Users\Administrator\.codex\skills\agent-config-sync-check` |
 | 全局路径（junction，ZCode） | `C:\Users\Administrator\.zcode\skills\agent-config-sync-check` |
+| 全局路径（junction，Qoder） | `C:\Users\Administrator\.qoder\skills\agent-config-sync-check` |
 | 实际目录（F 仓库） | `F:\idea-workspase-skills\agent-config-sync-check` |
 
 ## 说明
@@ -26,6 +27,7 @@ cmd /c dir "C:\Users\Administrator\.claude\skills" | findstr agent-config-sync-c
 cmd /c dir "C:\Users\Administrator\.dsh\skills"    | findstr agent-config-sync-check
 cmd /c dir "C:\Users\Administrator\.codex\skills"  | findstr agent-config-sync-check
 cmd /c dir "C:\Users\Administrator\.zcode\skills"  | findstr agent-config-sync-check
+cmd /c dir "C:\Users\Administrator\.qoder\skills" | findstr agent-config-sync-check
 ```
 
 正常应显示 `<JUNCTION>` 字样。也可以直接跑本 skill 的检查脚本，覆盖验证更全：
@@ -41,6 +43,7 @@ rd "C:\Users\Administrator\.claude\skills\agent-config-sync-check"
 rd "C:\Users\Administrator\.dsh\skills\agent-config-sync-check"
 rd "C:\Users\Administrator\.codex\skills\agent-config-sync-check"
 rd "C:\Users\Administrator\.zcode\skills\agent-config-sync-check"
+rd "C:\Users\Administrator\.qoder\skills\agent-config-sync-check"
 ```
 
 > 注意：`rd` 不要加 `/s`，否则可能递归进 F 源目录。删除 junction 只删链接，不删 F 源目录。

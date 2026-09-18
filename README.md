@@ -18,19 +18,19 @@
 
 ## 解决了什么问题
 
-**四端 Junction 架构下，同步坏了没有任何报警。** 技能目录删了链接悬空、新增 skill 忘挂某端、规则文件被编辑器"另存"成独立副本（硬链接组断裂，改一端其他三端不跟）、README 技能列表过期——这些全是静默故障，等到用的时候才发现技能不见了。这个技能把四端状态一遍扫完，机械性问题自动修，分叉问题报给人。
+**多端 Junction 架构下（当前 5 端），同步坏了没有任何报警。** 技能目录删了链接悬空、新增 skill 忘挂某端、规则文件被编辑器"另存"成独立副本（硬链接组断裂，改一端其他三端不跟）、README 技能列表过期——这些全是静默故障，等到用的时候才发现技能不见了。这个技能把各端状态一遍扫完，机械性问题自动修，分叉问题报给人。
 
 ## 检查项（14 条）
 
 | # | 检查项 | 内容 |
 |---|--------|------|
-| 1 | 链接覆盖 | 仓库每个含 `SKILL.md` 的目录（frontmatter `name` 自动推导）× 四端，`skills\<name>` 必须是 Junction 且目标正确 |
-| 2 | 死链 | 四端指向本仓库的 Junction，目标必须还存在（删技能没拆链 = 死链） |
+| 1 | 链接覆盖 | 仓库每个含 `SKILL.md` 的目录（frontmatter `name` 自动推导）× 各启用端（`agents` 的 `skillsEnabled`，当前 5 端），`skills\<name>` 必须是 Junction 且目标正确 |
+| 2 | 死链 | 各启用端指向本仓库的 Junction，目标必须还存在（删技能没拆链 = 死链） |
 | 3 | 硬链接组 | `~\.claude\CLAUDE.md` ⇄ `~\.dsh\AGENTS.md` ⇄ `~\.codex\AGENTS.md` ⇄ `~\.zcode\AGENTS.md` 同组且非空 |
 | 4 | frontmatter | `name`/`description` 必填，`name` 全小写 kebab-case |
 | 5 | README 区块 | 仓库根 README 顶部技能列表（`BEGIN/END` 标记内）与实际技能集合一致 |
 | 6 | 红线 | `coding-rules` 是独立 git 仓库，任何端不得挂它 |
-| 7 | JUNCTION说明.md | 每技能必有（家族子技能除外），四端路径齐全，无陈旧名/污染串；缺失或污染自动重建，缺端自动补行 |
+| 7 | JUNCTION说明.md | 每技能必有（家族子技能除外），各启用端路径齐全，无陈旧名/污染串；缺失或污染自动重建，缺端自动补行（按 `agents` 端清单跟随） |
 | 8 | 相关技能互链 | 每技能 README「相关技能」列表含全部其他技能的 GitHub 链接，缺的自动补行 |
 | 9 | ssh-mcp 配置 Junction | `~\{claude,dsh,codex,zcode}\ssh-mcp` 四端 Junction → 仓库 `assets\ssh-mcp`（数据源 toml 唯一真相，内网档案丢失只报告）；junction 自身 ACL 须收紧（继承的 Everyone 会令 ssh-mcp 拒启动） |
 | 10 | ssh-mcp 各端注册 | 四端统一 launcher 形态：`node <home>\ssh-mcp\launcher.js --config=<本端toml>`（Claude `.claude.json` / DSH web patch / Codex `config.toml` / ZCode `.zcode\cli\config.json`），注册块零密码；密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份并做对账（键须覆盖 toml 全部 profile，防新增服务器忘配密码）；旧形态/缺失 -Fix 自动迁移（备份→校验→失败回滚） |
@@ -68,10 +68,10 @@ powershell -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\sc
 agent-config-sync-check/
 ├── SKILL.md              ← 技能指令（触发词、检查流程、修复规则、红线）
 ├── README.md             ← 本文档
-├── JUNCTION说明.md        ← 四端 junction 指向关系与回滚方法
+├── JUNCTION说明.md        ← 各启用端 junction 指向关系与回滚方法
 ├── HOOKS说明.md           ← 四端防护能力对照（hooks/规则/插件，能力对齐实现各异）
 ├── .gitignore            ← 排除 logs/、assets/ssh-mcp/ 下 toml+密码文件（内网档案不入公开仓）
-├── sync-config.json      ← 四端路径与开关、硬链接组路径、README 标记、sshMcpConfig
+├── sync-config.json      ← 各端路径与开关（agents 含 label）、硬链接组路径、README 标记、sshMcpConfig
 ├── assets/
 │   └── ssh-mcp/          ← ssh-mcp 数据源（四端 Junction 指向这里；目录与各端 junction ACL 均已收紧）
 │       ├── ssh-mcp-config.toml   ← 服务器档案（内网拓扑，gitignore）
@@ -94,7 +94,7 @@ schtasks /Create /TN "agent-config-sync-check" /TR "powershell -NoProfile -File 
 
 ## 新增 skill 时
 
-仓库建目录 + `SKILL.md`（`name` = 四端链接名），四端各建一条 Junction，然后跑一次本技能——README 区块自动补齐、四端覆盖自动验证。配置里加第 5 端只需在 `sync-config.json` 的 `agents` 数组加一行。
+仓库建目录 + `SKILL.md`（`name` = 各启用端链接名），各启用端各建一条 Junction，然后跑一次本技能——README 区块自动补齐、各端覆盖自动验证。配置里加新端只需在 `sync-config.json` 的 `agents` 数组加一行（含 `label` 端显示名字段），技能链接覆盖/死链/红线/JUNCTION说明.md 补行全部自动跟随，无需改脚本。
 
 ## 安装
 

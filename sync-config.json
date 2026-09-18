@@ -2,10 +2,11 @@
   "repo": "F:\\idea-workspase-skills",
   "excludeDirs": [".idea", "scripts", ".system", "logs"],
   "agents": [
-    { "name": "claude", "home": "C:\\Users\\Administrator\\.claude", "rulesFile": "CLAUDE.md", "skillsEnabled": true },
-    { "name": "dsh",    "home": "C:\\Users\\Administrator\\.dsh",    "rulesFile": "AGENTS.md", "skillsEnabled": true },
-    { "name": "codex",  "home": "C:\\Users\\Administrator\\.codex",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
-    { "name": "zcode",  "home": "C:\\Users\\Administrator\\.zcode",  "rulesFile": "AGENTS.md", "skillsEnabled": true }
+    { "name": "claude", "label": "Claude Code", "home": "C:\\Users\\Administrator\\.claude", "rulesFile": "CLAUDE.md", "skillsEnabled": true },
+    { "name": "dsh",    "label": "DSH",         "home": "C:\\Users\\Administrator\\.dsh",    "rulesFile": "AGENTS.md", "skillsEnabled": true },
+    { "name": "codex",  "label": "Codex",       "home": "C:\\Users\\Administrator\\.codex",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
+    { "name": "zcode",  "label": "Zcode",       "home": "C:\\Users\\Administrator\\.zcode",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
+    { "name": "qoder",  "label": "Qoder",       "home": "C:\\Users\\Administrator\\.qoder",  "rulesFile": "AGENTS.md", "skillsEnabled": true }
   ],
   "rulesHardlink": {
     "enabled": true,

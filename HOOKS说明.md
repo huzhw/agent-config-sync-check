@@ -3,6 +3,8 @@
 > 四端工具（Claude Code / DSH / Codex / Zcode）的防护钩子**能力对齐、实现方式各异**：
 > Claude 走 settings.json 挂 shell 脚本；DSH 走声明式规则 + 插件（无用户 hooks 机制）；Codex 走 config.toml 的 hooks 特性；Zcode 走 `~\.zcode\cli\config.json` 的 hooks 段（process 型，注册从 Claude settings.json 自动同步）。
 > 脚本分发细节（事实源、复制关系）见 `coding-rules\SYNC说明.md` 第三节。
+>
+> **Qoder 预留（阶段一未接）**：Qoder 已作为第五端纳入技能 Junction 同步，但其 hooks 机制（`~\.qoder\security-resources\...\.qoder-plugin\qoder-hooks.json`，与 Claude Code hooks 几乎同构、matcher 支持 `MultiEdit`）**暂不纳入 hooksSync**，转换规则与"hooks 是否真执行"待实测后再评估；当前 hooksSync 仍只覆盖 Claude（源）/ Zcode / Codex / DSH。
 
 ## 能力对照表
 

@@ -1,13 +1,13 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  agent-config-sync-check - sync guard core script (4 agent ends + skill repo)
+  agent-config-sync-check - sync guard core script (5 agent ends + skill repo)
 .DESCRIPTION
   Checks sync integrity between the skill repo (F:\idea-workspase-skills) and
-  4 agent home dirs (Claude Code / DSH / Codex / ZCode):
+  5 agent home dirs (Claude Code / DSH / Codex / ZCode / Qoder):
     1. Junction skill links coverage (repo SKILL.md frontmatter = single source of truth)
     2. Dangling links pointing into the repo
-    3. Global rules hardlink group (CLAUDE.md / AGENTS.md x4)
+    3. Global rules hardlink group (CLAUDE.md / AGENTS.md x4; Qoder not yet in group)
     4. SKILL.md frontmatter sanity (name/description, kebab-case)
     5. Repo root README skill-list section (BEGIN/END marks, auto-maintained)
     6. Redline dirs (coding-rules must never be linked)
@@ -1247,8 +1247,11 @@ function Test-Readme {
 # sync-config.json; the doc template lives in templates\JUNCTION-template.md.
 # This source stays ASCII-only.
 
-$script:Domains = @('claude', 'dsh', 'codex', 'zcode')
-$script:EndLabels = @{ claude = 'Claude Code'; dsh = 'DSH'; codex = 'Codex'; zcode = 'Zcode' }
+# End list + display labels are built from sync-config.json agents[] (skillsEnabled)
+# in the main flow after the config loads - see "$script:Domains =" near main.
+# Keeping them config-driven makes the checker (Test-JunctionDocs, reads $Cfg.agents)
+# and the fixer (Fix-JunctionDoc/Ensure-Block, reads $script:Domains) share one
+# source of truth, so a newly added end can no longer desync the two.
 
 # repo root of a skill (git-commit: repo root != skill dir)
 function Get-RepoRootDir {
@@ -1417,7 +1420,7 @@ function Fix-JunctionDoc {
             $text = $text.Replace($tok, $Name)
         }
     }
-    # 2. ensure four-end rows in table / check block / rollback block
+    # 2. ensure one row per enabled end in table / check block / rollback block
     $agents = @($Cfg.agents | Where-Object { $_.skillsEnabled })
     $tableFmt = [string]$Cfg.junctionDoc.tableRowFormat
     $checkFmt = [string]$Cfg.junctionDoc.checkCmdFormat
@@ -1737,6 +1740,12 @@ function Apply-Fixes {
 # ---------- main ----------
 
 $cfg = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
+
+# Build end list + labels from config (see "checks 7 + 8" section note above).
+$script:Domains = @($cfg.agents | Where-Object { $_.skillsEnabled } | ForEach-Object { [string]$_.name })
+$script:EndLabels = @{}
+foreach ($a in $cfg.agents) { $script:EndLabels[[string]$a.name] = [string]$a.label }
+
 $repo = $cfg.repo
 if (-not (Test-Path -LiteralPath $repo)) {
     Write-Host "repo not found: $repo"; exit 1
