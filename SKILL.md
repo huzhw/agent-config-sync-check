@@ -17,9 +17,9 @@ motto: "同步不怕断，怕断了没人知道——定期查，机械修，分
 | DSH | `~\.dsh` | `skills\`（Junction→仓库） | `AGENTS.md`（硬链接组） |
 | Codex | `~\.codex` | `skills\`（Junction→仓库） | `AGENTS.md`（硬链接组） |
 | ZCode | `~\.zcode` | `skills\`（Junction→仓库 + 中转链接） | `AGENTS.md`（硬链接组） |
-| Qoder | `~\.qoder` | `skills\`（Junction→仓库） | `AGENTS.md`（**暂未进硬链接组，阶段二评估**） |
+| Qoder | `~\.qoder` | `skills\`（Junction→仓库） | `AGENTS.md`（硬链接组） |
 
-全局规则是**一个硬链接组**（同一份文件 4 个名字，Qoder 当前不在组内）。`.zcode` 里还有指向 `.claude`、`.codex\.system` 的**中转链接**。
+全局规则是**一个硬链接组**（同一份文件 5 个名字，含 Qoder）。`.zcode` 里还有指向 `.claude`、`.codex\.system` 的**中转链接**。
 
 ## 使用方法
 
@@ -36,7 +36,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
   pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\sync-check.ps1" -Fix
   ```
 
-- **硬链接组重建模式**（`-FixHardlink`，哈希守卫）：四端规则文件 SHA256 **全部一致**才重建硬链接组（编辑器"替换写"拆链后一键修复）；任何一个哈希不等 = 可能分叉，**拒绝执行**维持只报告，人工定哪份为准
+- **硬链接组重建模式**（`-FixHardlink`，哈希守卫）：五端规则文件 SHA256 **全部一致**才重建硬链接组（编辑器"替换写"拆链后一键修复）；任何一个哈希不等 = 可能分叉，**拒绝执行**维持只报告，人工定哪份为准
 
   ```powershell
   pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\sync-check.ps1" -FixHardlink
@@ -49,7 +49,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 
 1. **技能链接覆盖**：仓库里每个含 `SKILL.md` 的目录（期望集合从 frontmatter `name` 自动推导，新增技能自动纳入）× 各启用技能端（`agents` 中 `skillsEnabled: true`，当前 5 端），`skills\<name>` 必须存在、是 Junction、目标等于仓库规范路径
 2. **死链**：各启用端 `skills\` 下所有指向本仓库的 Junction，目标必须还存在（仓库删了技能但链接没拆 = 死链）
-3. **硬链接组**：规则文件 4 个路径都存在、`LinkType=HardLink`、同组（`(Get-Item).Target` 互含对方路径）、非空
+3. **硬链接组**：规则文件 5 个路径都存在（含 Qoder）、`LinkType=HardLink`、同组（`(Get-Item).Target` 互含对方路径）、非空
 4. **frontmatter 健全**：`name`、`description` 必填；`name` 全小写 kebab-case（`^[a-z0-9]+(-[a-z0-9]+)*$`）
 5. **README 技能列表**：仓库根 `README.md` 顶部区块（`<!-- sync-check:skills BEGIN/END -->` 标记）与期望技能集合一致
 6. **红线**：`coding-rules` 是独立 git 仓库、非技能，各启用端 `skills\` 下不得出现指向它的链接

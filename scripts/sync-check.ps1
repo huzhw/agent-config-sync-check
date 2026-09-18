@@ -7,7 +7,7 @@
   5 agent home dirs (Claude Code / DSH / Codex / ZCode / Qoder):
     1. Junction skill links coverage (repo SKILL.md frontmatter = single source of truth)
     2. Dangling links pointing into the repo
-    3. Global rules hardlink group (CLAUDE.md / AGENTS.md x4; Qoder not yet in group)
+    3. Global rules hardlink group (CLAUDE.md / AGENTS.md x5 incl. Qoder)
     4. SKILL.md frontmatter sanity (name/description, kebab-case)
     5. Repo root README skill-list section (BEGIN/END marks, auto-maintained)
     6. Redline dirs (coding-rules must never be linked)
@@ -212,7 +212,7 @@ function Test-RulesHardlink {
         if (-not $item) { Add-Issue 'rules' 'ERROR' 'RulesFileMissing' $p $false; continue }
         $items[$p] = $item
         if ($item.LinkType -ne 'HardLink') {
-            Add-Issue 'rules' 'ERROR' 'HardlinkBroken' "$p LinkType='$($item.LinkType)' (likely re-saved as standalone copy; 4-end rules sync is broken)" $false
+            Add-Issue 'rules' 'ERROR' 'HardlinkBroken' "$p LinkType='$($item.LinkType)' (likely re-saved as standalone copy; rules hardlink group sync is broken)" $false
             continue
         }
         if ($item.Length -le 0) { Add-Issue 'rules' 'ERROR' 'RulesFileEmpty' $p $false }
