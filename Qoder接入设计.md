@@ -121,7 +121,7 @@
 
 | 项 | 现状 | 预留接口 | 触发条件 |
 |---|---|---|---|
-| mcpSync qoder 端 | `settings.json` 无 `mcpServers`；`mcp-router.json` 是运行时进程路由（含 apiKey，禁碰） | 需新增端类型 `qoder-json`（只碰 `settings.json` 顶层 `mcpServers`，禁碰 router） | Qoder 里真配了需跨端同步的 MCP |
+| mcpSync qoder 端 | ☑ **已实施（2026-09-19）**：`qoder-json` 端类型复用 claude 解析器（mcpServers 同构）+ `register-qoder.js` 回写；端清单已改配置驱动（`Get-McpEndNames`，治掉与检查项 7 同款的硬编码坑）；codegraph/dbx/chrome-devtools 三条已写入，chrome-devtools 分配 `User Data MCP-qoder` 独立目录 | —— | 已触发 |
 | hooksSync qoder 端 | `qoder-hooks.json` 与 CC 同构，matcher 支持 `MultiEdit`（转换成本低于 ZCode） | 参照 zcode 端做转换规则 + 实测 hooks 是否真执行 | Qoder 侧有硬性拦截需求（规则文件只是软约束） |
 | ssh-mcp qoder 端 | `sshMcpConfig.junctionEnds` / `registration.ends` 是显式登记制，qoder 未登记即不检查 | `junctionEnds` 加 `"qoder"` + ends 加条 + ACL 收紧（ssh-mcp v2.4 会拒宽松 ACL） | 需要在 Qoder 里用 ssh-mcp 时 |
 | chrome-devtools 唯一目录（检查项 14） | 只检查登记端；qoder 未登记 | `perEndArgs` 加 `--userDataDir=...MCP-qoder` | Qoder 配 chrome-devtools 时，**必须**先分独立目录 |

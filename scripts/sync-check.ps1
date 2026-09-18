@@ -747,6 +747,11 @@ function Get-McpParsedEnd {
         $out = & node $assets[3] $File 2>&1
         if ($LASTEXITCODE -ne 0) { throw "claude config parse failed: $out" }
         return ($out | ConvertFrom-Json)
+    } elseif ($Type -eq 'qoder-json') {
+        # Qoder user settings use the same top-level mcpServers shape as Claude.
+        $out = & node $assets[3] $File 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "qoder config parse failed: $out" }
+        return ($out | ConvertFrom-Json)
     } else {
         $out = & ($script:McpPyPath) $assets[1] $File 2>&1
         if ($LASTEXITCODE -ne 0) { throw "codex toml parse failed: $out" }
@@ -824,15 +829,34 @@ function Get-McpEffectiveCommandArgs {
     return @{ command = $command; args = $argList }
 }
 
+function Get-McpEndNames {
+    # Config-driven end list for mcpSync: any server property that looks like an
+    # end config (PSCustomObject carrying a 'type') is an end. Keeps the fifth
+    # (and future) ends a pure data change - no hardcoded name list to desync.
+    param([object]$Cfg)
+    $c = Get-McpSyncCfg $Cfg
+    $names = @()
+    foreach ($srv in @($c.servers)) {
+        foreach ($p in $srv.PSObject.Properties) {
+            $v = $p.Value
+            if ($v -is [System.Management.Automation.PSCustomObject] -and $v.PSObject.Properties['type']) {
+                if ($names -notcontains $p.Name) { $names += $p.Name }
+            }
+        }
+    }
+    return $names
+}
+
 function Test-McpSync {
     param([object]$Cfg)
     $c = Get-McpSyncCfg $Cfg
     if (-not $c -or -not $c.enabled) { return }
     $script:McpYamlPath = [string]$c.yamlModulePath
     $script:McpPyPath = [string]$c.pythonPath
+    $endNames = Get-McpEndNames $Cfg
     $parsed = @{}
     foreach ($srv in @($c.servers)) {
-        foreach ($endName in @('claude', 'dsh', 'codex', 'zcode')) {
+        foreach ($endName in $endNames) {
             $endProp = $srv.PSObject.Properties[$endName]
             if (-not $endProp) { continue }
             $end = $endProp.Value
@@ -853,7 +877,7 @@ function Test-McpSync {
     }
     foreach ($srv in @($c.servers)) {
         $name = [string]$srv.name
-        foreach ($endName in @('claude', 'dsh', 'codex', 'zcode')) {
+        foreach ($endName in $endNames) {
             $endProp = $srv.PSObject.Properties[$endName]
             if (-not $endProp) { continue }
             $end = $endProp.Value
@@ -881,7 +905,7 @@ function Test-McpSync {
             } else {
                 $e = $parsed[$key].PSObject.Properties[$name]
                 if (-not $e) {
-                    $where = if ([string]$end.type -eq 'zcode-json') { "no mcp.servers.$name in $($end.file)" } elseif ([string]$end.type -eq 'claude-json') { "no mcpServers.$name in $($end.file)" } else { "no [mcp_servers.$name] section in $($end.file)" }
+                    $where = if ([string]$end.type -eq 'zcode-json') { "no mcp.servers.$name in $($end.file)" } elseif ([string]$end.type -eq 'claude-json' -or [string]$end.type -eq 'qoder-json') { "no mcpServers.$name in $($end.file)" } else { "no [mcp_servers.$name] section in $($end.file)" }
                     Add-Issue $agent 'ERROR' 'McpMissing' $where $fixable -LinkName $link
                     continue
                 }
@@ -905,14 +929,14 @@ function Test-McpUserDataDirUnique {
     # second exits instantly ("Target closed") and stays dead until its agent
     # restarts. 2026-09-12 实战：曾四端共用一个 "User Data MCP" 目录互顶；同日
     # 引擎升级后 DSH 端整体退役 chrome-devtools MCP（改用 dsh-builtin-browser
-    # 插件），本检查只覆盖登记端（CC/Codex/ZCode）。
+    # 插件），本检查只覆盖登记端（CC/Codex/ZCode/Qoder，配置驱动）。
     param([object]$Cfg)
     $c = Get-McpSyncCfg $Cfg
     if (-not $c -or -not $c.enabled) { return }
     $srv = @($c.servers | Where-Object { $_.name -eq 'chrome-devtools' })[0]
     if (-not $srv) { return }
     $owner = @{}
-    foreach ($endName in @('claude', 'dsh', 'codex', 'zcode')) {
+    foreach ($endName in (Get-McpEndNames $Cfg)) {
         $endProp = $srv.PSObject.Properties[$endName]
         if (-not $endProp) { continue }
         $end = $endProp.Value
@@ -984,6 +1008,14 @@ function Add-McpRegistration {
             $out = & node $helper $file ([string]$srv.name) $command @argStrs 2>&1
             if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*ZCODE_REGISTER_OK*') { throw "zcode register failed: $out" }
             $parsed = Get-McpParsedEnd 'zcode-json' $file
+            $e = $parsed.PSObject.Properties[[string]$srv.name]
+            if (-not $e) { throw "post-append verify failed: entry not found" }
+        } elseif ([string]$end.type -eq 'qoder-json') {
+            $helper = Join-Path $script:ScriptDir 'register-qoder.js'
+            $argStrs = @($argList | ForEach-Object { [string]$_ })
+            $out = & node $helper $file ([string]$srv.name) $command @argStrs 2>&1
+            if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*QODER_REGISTER_OK*') { throw "qoder register failed: $out" }
+            $parsed = Get-McpParsedEnd 'qoder-json' $file
             $e = $parsed.PSObject.Properties[[string]$srv.name]
             if (-not $e) { throw "post-append verify failed: entry not found" }
         } else {

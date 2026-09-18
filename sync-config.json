@@ -53,7 +53,8 @@
         "args": ["serve", "--mcp"],
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-codegraph", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
-        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" }
+        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder\\settings.json" }
       },
       {
         "name": "dbx",
@@ -61,7 +62,8 @@
         "args": [],
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-dbx", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
-        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" }
+        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder\\settings.json" }
       },
       {
         "name": "chrome-devtools",
@@ -70,16 +72,19 @@
         "perEndArgsPrepend": {
           "claude": ["-y", "chrome-devtools-mcp@latest"],
           "codex": ["-y", "chrome-devtools-mcp@latest"],
-          "zcode": ["-y", "chrome-devtools-mcp@latest"]
+          "zcode": ["-y", "chrome-devtools-mcp@latest"],
+          "qoder": ["-y", "chrome-devtools-mcp@latest"]
         },
         "perEndArgs": {
           "claude": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-claude"],
           "codex": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-codex"],
-          "zcode": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-zcode"]
+          "zcode": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-zcode"],
+          "qoder": ["--userDataDir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data MCP-qoder"]
         },
         "claude": { "type": "claude-json", "file": "C:\\Users\\Administrator\\.claude.json", "fixable": false },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
-        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" }
+        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder\\settings.json" }
       }
     ],
     "pythonPath": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
