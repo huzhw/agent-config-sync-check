@@ -1191,6 +1191,10 @@ function Test-HooksSync {
         switch ([string]$end.type) {
             'zcode-json-hooks' { Test-ZcodeHooksEnd -EndName $endName -End $end -Converted $conv.Obj }
             'codex-toml-hooks' { Test-CodexHooksEnd -EndName $endName -End $end -Converted $conv.Obj }
+            'qoder-json-hooks' {
+                $exp = Get-QoderHookEntries -Cfg $c -End $end -Flat $flat -EndName $endName
+                if ($null -ne $exp) { Test-QoderHooksEnd -EndName $endName -End $end -Expected $exp }
+            }
         }
     }
 }
@@ -1209,6 +1213,77 @@ function Invoke-ZcodeHooksFix {
     Write-NoBomUtf8 -Path $specFile -Text ($conv.Raw + "`r`n")
     $out = & node (Join-Path $script:ScriptDir 'register-zcode-hooks.js') ([string]$end.file) $specFile 2>&1
     if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*ZCODE_HOOKS_OK*') { throw "zcode hooks register failed: $out" }
+}
+
+function Get-QoderHookEntries {
+    # Qoder hooks are Claude-Code-shaped command strings. Reuse the proven
+    # process-form conversion (.sh -> bash, .cjs -> node, $HOME expanded to
+    # forward slashes) and join it back into one shell-neutral command line.
+    param([object]$Cfg, [object]$End, [object[]]$Flat, [string]$EndName)
+    $conv = Convert-HooksForEnd -Cfg $Cfg -End $End -Flat $Flat -EndName $EndName
+    if ($null -eq $conv) { return $null }
+    $out = @()
+    foreach ($e in @($conv.Obj.entries)) {
+        if ([string]$e.type -eq 'process') {
+            $parts = @([string]$e.command)
+            foreach ($a in @($e.args)) { $parts += ('"' + ([string]$a) + '"') }
+            $cmd = $parts -join ' '
+        } else {
+            $cmd = [string]$e.command
+        }
+        $t = $null
+        if ($null -ne $e.timeoutMs) { $t = [int][Math]::Round([double]$e.timeoutMs / 1000) }
+        $out += @{ event = [string]$e.event; matcher = [string]$e.matcher; command = $cmd; timeoutSec = $t }
+    }
+    return $out
+}
+
+function Test-QoderHooksEnd {
+    param([string]$EndName, [object]$End, [object[]]$Expected)
+    $file = [string]$End.file
+    if (-not (Test-Path -LiteralPath $file)) {
+        Add-Issue "hooks-sync/$EndName" 'ERROR' 'HooksFileMissing' "target file missing: $file" $false
+        return
+    }
+    $json = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json
+    $existing = @()
+    if ($json.hooks) {
+        foreach ($evProp in $json.hooks.PSObject.Properties) {
+            if ($evProp.Name -eq 'enabled') { continue }
+            foreach ($grp in @($evProp.Value)) {
+                $m = ''
+                if ($grp.PSObject.Properties['matcher'] -and $grp.matcher) { $m = [string]$grp.matcher }
+                foreach ($h in @($grp.hooks)) {
+                    if (-not $h) { continue }
+                    $existing += @{ event = $evProp.Name; matcher = $m; command = [string]$h.command }
+                }
+            }
+        }
+    }
+    foreach ($e in $Expected) {
+        $hit = $existing | Where-Object {
+            $_.event -eq $e.event -and (($_.matcher + '') -eq ($e.matcher + '')) -and (([string]$_.command) -eq ([string]$e.command))
+        } | Select-Object -First 1
+        if (-not $hit) {
+            Add-Issue "hooks-sync/$EndName" 'ERROR' 'HookMissing' "$($e.event) [$($e.matcher)]: $(Split-Path -Leaf ([string]$e.command)) not registered in $(Split-Path -Leaf $file)" ([bool]$End.fixable) -LinkName $EndName
+        }
+    }
+}
+
+function Invoke-QoderHooksFix {
+    # Repair = upsert the FULL converted entry set (idempotent, never deletes
+    # user-added hooks), then rely on the re-check pass to confirm.
+    param([object]$Cfg, [string]$EndName)
+    $c = Get-HooksSyncCfg $Cfg
+    $end = $c.ends.PSObject.Properties[$EndName].Value
+    $flat = Get-FlattenedSourceHooks $c
+    if ($null -eq $flat) { throw "hooks source unavailable" }
+    $entries = Get-QoderHookEntries -Cfg $c -End $end -Flat $flat -EndName $EndName
+    if ($null -eq $entries) { throw "hook conversion failed" }
+    $specFile = Join-Path $script:LogDir 'hooks-spec-qoder.json'
+    Write-NoBomUtf8 -Path $specFile -Text (@{ entries = $entries } | ConvertTo-Json -Depth 6)
+    $out = & node (Join-Path $script:ScriptDir 'register-qoder-hooks.js') ([string]$end.file) $specFile 2>&1
+    if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*QODER_HOOKS_OK*') { throw "qoder hooks register failed: $out" }
 }
 
 # ---------- check 5: repo root README skill-list section ----------
@@ -1719,13 +1794,25 @@ function Apply-Fixes {
                     $script:Fixed++
                 }
                 'HookMissing' {
-                    Invoke-ZcodeHooksFix $Cfg $iss.LinkName
-                    Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): merged missing hooks into ZCode config"
+                    $hEnd = (Get-HooksSyncCfg $Cfg).ends.PSObject.Properties[$iss.LinkName].Value
+                    if ([string]$hEnd.type -eq 'qoder-json-hooks') {
+                        Invoke-QoderHooksFix $Cfg $iss.LinkName
+                        Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): merged missing hooks into Qoder settings"
+                    } else {
+                        Invoke-ZcodeHooksFix $Cfg $iss.LinkName
+                        Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): merged missing hooks into ZCode config"
+                    }
                     $script:Fixed++
                 }
                 'HookDrift' {
-                    Invoke-ZcodeHooksFix $Cfg $iss.LinkName
-                    Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): rewrote drifted hooks in ZCode config"
+                    $hEnd = (Get-HooksSyncCfg $Cfg).ends.PSObject.Properties[$iss.LinkName].Value
+                    if ([string]$hEnd.type -eq 'qoder-json-hooks') {
+                        Invoke-QoderHooksFix $Cfg $iss.LinkName
+                        Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): rewrote drifted hooks in Qoder settings"
+                    } else {
+                        Invoke-ZcodeHooksFix $Cfg $iss.LinkName
+                        Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): rewrote drifted hooks in ZCode config"
+                    }
                     $script:Fixed++
                 }
                 'HooksRunnerDisabled' {

@@ -96,7 +96,7 @@
       "file": "C:\\Users\\Administrator\\.claude\\settings.json",
       "section": "hooks"
     },
-    "supportedEvents": ["SessionStart", "UserPromptSubmit", "PreToolUse", "PermissionRequest", "PostToolUse", "PostToolUseFailure", "Stop"],
+    "supportedEvents": ["SessionStart", "UserPromptSubmit", "PreToolUse", "PermissionRequest", "PostToolUse", "PostToolUseFailure", "Stop", "SessionEnd"],
     "ends": {
       "zcode": {
         "enabled": true,
@@ -118,6 +118,19 @@
         "fixable": false,
         "dropEvents": ["SessionEnd", "Stop"],
         "excludeCommandPatterns": ["rtk hook claude", "guard-memory-write.sh", "guard-memory-approved.sh", "warn-download-location.sh", "notify.cjs"]
+      },
+      "qoder": {
+        "enabled": true,
+        "type": "qoder-json-hooks",
+        "file": "C:\\Users\\Administrator\\.qoder\\settings.json",
+        "fixable": true,
+        "preferredType": "process",
+        "dropEvents": [],
+        "dropToolsInMatcher": [],
+        "excludeCommandPatterns": ["rtk hook claude"],
+        "rewrite": [
+          { "match": "--source=claude", "replace": "--source=qoder" }
+        ]
       }
     }
   },
