@@ -12,7 +12,6 @@
 |---|---|---|---|---|
 | 危险 git 拦截（push --force、reset --hard、add . 等） | `block-dangerous-git.sh`（deny，正则） | 内置基线 ask（push --force / reset --hard）+ `rules.yaml` 6 条 deny（clean / branch -D / checkout . / restore . / add 全量） | `block-dangerous-git.sh`（同脚本） | 同 Claude |
 | 危险 bash 拦截（rd /s、format、diskpart、rm -rf /、curl\|sh 等） | `guard-dangerous-bash.sh` | `rules.yaml` Windows 段 8 条 deny + 内置基线（mkfs/dd/chmod 777/fork bomb/curl\|sh/敏感路径 ask） | 同脚本（Codex 格式适配） | 同 Claude |
-| `&&` 串联禁（引号感知） | `block-amper-and.sh` | 暂无对应规则 | 同脚本 | 同 Claude |
 | 记忆守卫（memory/ 分层 + 命名校验 + 台账） | `guard-memory-write.sh` + `guard-memory-approved.sh` | 无 memory 机制（文件沙箱 + AGENTS.md 约定兜底） | `guard-memory-write-codex.sh` + `guard-memory-approved-codex.sh`（apply_patch 适配版） | 同 Claude |
 | 下载位置提醒 | `warn-download-location.sh` | 无（AGENTS.md 文字约定） | 无 | 同 Claude |
 | 任务完成通知 | tokentracker（Stop/SessionEnd） | `dsh-notification` 插件（桌面通知） | tokentracker（`notify` 配置） | tokentracker（Stop，`--source=zcode`） |
