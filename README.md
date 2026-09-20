@@ -20,7 +20,7 @@
 
 **多端 Junction 架构下（当前 5 端），同步坏了没有任何报警。** 技能目录删了链接悬空、新增 skill 忘挂某端、规则文件被编辑器"另存"成独立副本（硬链接组断裂，改一端其他三端不跟）、README 技能列表过期——这些全是静默故障，等到用的时候才发现技能不见了。这个技能把各端状态一遍扫完，机械性问题自动修，分叉问题报给人。
 
-## 检查项（14 条）
+## 检查项（13 条）
 
 | # | 检查项 | 内容 |
 |---|--------|------|
@@ -34,10 +34,9 @@
 | 8 | 相关技能互链 | 每技能 README「相关技能」列表含全部其他技能的 GitHub 链接，缺的自动补行 |
 | 9 | ssh-mcp 配置 Junction | `~\{claude,dsh,codex,zcode}\ssh-mcp` 四端 Junction → 仓库 `assets\ssh-mcp`（数据源 toml 唯一真相，内网档案丢失只报告）；junction 自身 ACL 须收紧（继承的 Everyone 会令 ssh-mcp 拒启动） |
 | 10 | ssh-mcp 各端注册 | 四端统一 launcher 形态：`node <home>\ssh-mcp\launcher.js --config=<本端toml>`（Claude `.claude.json` / DSH web patch / Codex `config.toml` / ZCode `.zcode\cli\config.json`），注册块零密码；密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份并做对账（键须覆盖 toml 全部 profile，防新增服务器忘配密码）；旧形态/缺失 -Fix 自动迁移（备份→校验→失败回滚） |
-| 11 | 通用 MCP 同步 | `sync-config.json` 的 `mcpSync.servers` 登记的 MCP（codegraph/dbx/chrome-devtools…）各端 command+args 解析级比对（node YAML / python tomllib / JSON，共享 insert 块也能识别）；支持 `perEndCommand`/`perEndArgsPrepend`/`perEndArgs` 按端覆盖（比对与修复都按生效值）；Claude 端 `.claude.json` 只读检查不自动写；缺失/漂移 -Fix 自动补齐重写；env 不跨端，带敏感值的学 ssh 用 launcher；http 型（idea）暂不支持 |
+| 11 | 通用 MCP 同步 | `sync-config.json` 的 `mcpSync.servers` 登记的 MCP（codegraph/dbx…）各端 command+args 解析级比对（node YAML / python tomllib / JSON，共享 insert 块也能识别）；支持 `perEndCommand`/`perEndArgsPrepend`/`perEndArgs` 按端覆盖（比对与修复都按生效值）；Claude 端 `.claude.json` 只读检查不自动写；缺失/漂移 -Fix 自动补齐重写；env 不跨端，带敏感值的学 ssh 用 launcher；http 型（idea）暂不支持 |
 | 12 | 防护 hooks 同步 | 源 = `~\.claude\settings.json` hooks 段；ZCode 落点 `~\.zcode\cli\config.json` 的 `hooks.events`（runner 须 `enabled: true`），经 `hooks-convert.js` 转换（丢 SessionEnd、去 MultiEdit、`--source=zcode` 改写、shell 串拆 process 型）；缺失/漂移 -Fix 幂等合并；Codex 端只报告（trusted_hash 机制不可自动改写） |
 | 13 | 规则手工副本 | 跨卷副本（`coding-rules\CLAUDE.md`，F 盘进不了硬链接组）登记在 `rulesHardlink.manualCopies`：剥掉副本自身开头 `<!-- -->` 头注释后正文须与组正文一致；漂移 -Fix 自动重写（保留其头注释），副本整份丢失不自动修（要先写身份头注释） |
-| 14 | chrome-devtools 目录唯一 | Chromium 同一 profile 目录只容一个活动实例，两端 `--userDataDir` 相同 = 谁后启动浏览器谁秒死（Target closed）。按登记端（CC/Codex/ZCode；**DSH 端已弃用浏览器 MCP 改用 dsh-builtin-browser 插件**）解析各端 chrome-devtools 的 userDataDir，重复报 `McpUserDataDirDuplicate`（只报告，目录分配看 `sync-config.json` 的 `perEndArgs`：各端 `User Data MCP-<端名>`）；无 userDataDir 报 WARN |
 
 `.zcode` 里的中转链接（→ `.claude` 官方技能、→ `.codex\.system` 系统技能）只验"上游还在"，上游删了报死链，**只报告不自动修**。
 

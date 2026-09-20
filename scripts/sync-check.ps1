@@ -813,10 +813,7 @@ function Remove-McpDshChild {
 function Get-McpEffectiveCommandArgs {
     # Effective command/args for one end = server-level command+args overlaid by
     # optional perEndCommand / perEndArgsPrepend / perEndArgs maps. Keeps
-    # "one canonical declaration" sync while letting each agent own its variant
-    # (chrome-devtools: per-agent --userDataDir so four agents never fight over
-    # one Chromium profile lock; DSH: node+npx-cli.js because the DSH engine
-    # cannot spawn .cmd shims like npx directly).
+    # "one canonical declaration" sync while letting each agent own its variant.
     param([object]$Srv, [string]$EndName)
     $command = [string]$Srv.command
     $argList = @($Srv.args | ForEach-Object { [string]$_ })
@@ -918,54 +915,6 @@ function Test-McpSync {
             if ((@($got.args) -join "`n") -ne ($expArgs -join "`n")) {
                 Add-Issue $agent 'ERROR' 'McpDrift' "args mismatch (got: $($got.args -join ' '))" $fixable -LinkName $link
             }
-        }
-    }
-}
-
-function Test-McpUserDataDirUnique {
-    # Check item 14: chrome-devtools userDataDir must be UNIQUE per end.
-    # Chromium allows a single live instance per profile dir - two agents
-    # pointing at the same --userDataDir means whoever launches its browser
-    # second exits instantly ("Target closed") and stays dead until its agent
-    # restarts. 2026-09-12 实战：曾四端共用一个 "User Data MCP" 目录互顶；同日
-    # 引擎升级后 DSH 端整体退役 chrome-devtools MCP（改用 dsh-builtin-browser
-    # 插件），本检查只覆盖登记端（CC/Codex/ZCode/Qoder，配置驱动）。
-    param([object]$Cfg)
-    $c = Get-McpSyncCfg $Cfg
-    if (-not $c -or -not $c.enabled) { return }
-    $srv = @($c.servers | Where-Object { $_.name -eq 'chrome-devtools' })[0]
-    if (-not $srv) { return }
-    $owner = @{}
-    foreach ($endName in (Get-McpEndNames $Cfg)) {
-        $endProp = $srv.PSObject.Properties[$endName]
-        if (-not $endProp) { continue }
-        $end = $endProp.Value
-        $file = [string]$end.file
-        if (-not (Test-Path -LiteralPath $file)) {
-            Add-Issue "mcp-sync/chrome-devtools/$endName" 'ERROR' 'McpFileMissing' "target file missing: $file" $false
-            continue
-        }
-        try { $parsed = Get-McpParsedEnd ([string]$end.type) $file } catch {
-            Add-Issue "mcp-sync/chrome-devtools/$endName" 'ERROR' 'McpParseFailed' ("{0}" -f $_.Exception.Message) $false
-            continue
-        }
-        $e = $parsed.PSObject.Properties[[string]$end.id]
-        if (-not $e) { $e = $parsed.PSObject.Properties['chrome-devtools'] }
-        if (-not $e) { continue }
-        $dir = $null
-        foreach ($a in @($e.Value.args)) {
-            $s = [string]$a
-            if ($s -like '--userDataDir=*') { $dir = $s.Substring('--userDataDir='.Length) }
-        }
-        if (-not $dir) {
-            Add-Issue "mcp-sync/chrome-devtools/$endName" 'WARN' 'McpUserDataDirAbsent' "no --userDataDir in chrome-devtools args (isolated/headless is fine only if intended)" $false
-            continue
-        }
-        $key = $dir.ToLower()
-        if ($owner.ContainsKey($key)) {
-            Add-Issue "mcp-sync/chrome-devtools/$endName" 'ERROR' 'McpUserDataDirDuplicate' "userDataDir '$dir' also used by end '$($owner[$key])' - chromium single-instance per profile, the second agent's browser dies instantly" $false
-        } else {
-            $owner[$key] = $endName
         }
     }
 }
@@ -1890,7 +1839,6 @@ function Invoke-AllChecks {
     Test-SshMcpJunction $Cfg
     Test-SshMcpRegistration $Cfg
     Test-McpSync $Cfg
-    Test-McpUserDataDirUnique $Cfg
     Test-HooksSync $Cfg
     Test-Readme $Cfg $Expected
     Test-JunctionDocs $Cfg $Expected
