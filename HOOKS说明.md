@@ -27,7 +27,7 @@
 | Claude Code | settings.json hooks 段 | `~\.claude\settings.json` | `~\.claude\hooks\*.sh`（事实源副本） |
 | Zcode | config.json hooks 段（`hooks.events` + 必须 `hooks.enabled: true`；**只认这一处**——`~\.zcode\settings.json` 不被读取，`~\.claude\settings.json` 被其 legacy 加载器列出但恒不执行） | `~\.zcode\cli\config.json` | process 型直接引用 `~\.claude\hooks\*.sh` 同一路径；注册由 agent-config-sync-check 的 hooksSync 从 Claude settings.json 自动同步（SessionEnd 丢弃、matcher 去 MultiEdit、`--source=zcode` 改写） |
 | Codex | config.toml `[[hooks.*]]` + `[features] hooks = true` | `~\.codex\config.toml`（每条 hook 有 trusted_hash，命令变更需重新信任；hooksSync 只报告不自动写） | Bash 拦截引 `~\.claude\hooks\`；记忆守卫用 `~\.codex\hooks\*codex.sh` 适配版 |
-| DSH | 声明式规则（无 hooks） | `~\.dsh\rules.yaml`（用户级，热重载）+ `~\.dsh\settings.yaml` `permission.defaultPreset` | 内置基线：`~\.dsh\profiles\web\node_modules\dsh-permission-rules\rules\builtin-high-risk.yaml` |
+| DSH | 声明式规则（无 hooks） | `~\.dsh\rules.yaml`（用户级，热重载）+ `~\.dsh\profiles\web\cordis.patch.yml` 的 `- id: permission` → `defaultPreset`（2026-09-23 起；旧的 `~\.dsh\settings.yaml` 已退役改名 `.imported`） | 内置基线：`~\.dsh\profiles\web\node_modules\dsh-permission-rules\rules\builtin-high-risk.yaml` |
 
 ## DSH 插件清单（防护相关 4 个）
 
