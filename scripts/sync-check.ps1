@@ -585,7 +585,7 @@ function Test-SshMcpRegistration {
             }
             'dsh-patch' {
                 $text = Get-Content -LiteralPath $file -Raw -Encoding UTF8
-                $blockStart = [regex]::Match($text, "(?ms)^- insert:\r?\n  - id: mcp-$name\s*$")
+                $blockStart = [regex]::Match($text, "(?ms)^- insert:\r?\n[ \t]*- id: mcp-$name\s*$")
                 if (-not $blockStart.Success) {
                     Add-Issue $agent 'ERROR' 'SshMcpNotRegistered' "no 'mcp-$name' insert block in $file" $true -LinkName $endName
                     continue
