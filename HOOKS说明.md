@@ -17,8 +17,8 @@
 | 任务完成通知 | tokentracker（Stop/SessionEnd） | `dsh-notification` 插件（桌面通知） | tokentracker（`notify` 配置） | tokentracker（Stop，`--source=zcode`） | 无（hooksSync 排除 tokentracker，停止无效采集） |
 | 提示注入/密钥泄露检测 | 无 | `dsh-defend` 插件（消息/工具参数/工具结果三道闸） | 无 | 无 | 无 |
 | 审批 AI 预审 | 无（人工审批） | `dsh-auto-review` 插件（第二模型裁决，fail-closed） | 无 | 无 | 无 |
-| 文件沙箱 | 无内置 | workspace-write 预设（工作区外写入走审批） | 内置 sandbox/approval | 内置 | 未盘点 |
-| 网络白名单 | 无内置 | `rules.yaml` network 规则 + 本地策略代理 | 无内置 | 无内置 | 未盘点 |
+| 文件沙箱 | 无内置 | workspace-write 预设（工作区外写入走审批） | 内置 sandbox/approval | 内置 | 内置（终端沙箱 + 权限升级询问；另有 Full Access 模式可绕过） |
+| 网络白名单 | 无内置 | `rules.yaml` network 规则 + 本地策略代理 | 无内置 | 无内置 | 无（官方"白名单"指企业放行 Qoder 域名，非 Agent 侧管控） |
 
 ## 各端配置位置
 
