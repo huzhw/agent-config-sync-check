@@ -28,7 +28,7 @@
     "enabled": true,
     "sourceDir": "F:\\idea-workspase-skills\\agent-config-sync-check\\assets\\ssh-mcp",
     "configFileName": "ssh-mcp-config.toml",
-    "junctionEnds": ["claude", "dsh", "codex", "zcode"],
+    "junctionEnds": ["claude", "dsh", "codex", "zcode", "qoder"],
     "registration": {
       "serverName": "ssh",
       "command": "node",
@@ -40,7 +40,8 @@
         "claude": { "type": "claude-json", "file": "C:\\Users\\Administrator\\.claude.json", "configPath": "C:/Users/Administrator/.claude/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.claude/ssh-mcp/launcher.js", "fixable": true },
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "configPath": "C:/Users/Administrator/.dsh/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.dsh/ssh-mcp/launcher.js" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml", "configPath": "C:/Users/Administrator/.codex/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.codex/ssh-mcp/launcher.js" },
-        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json", "configPath": "C:/Users/Administrator/.zcode/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.zcode/ssh-mcp/launcher.js", "fixable": true }
+        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json", "configPath": "C:/Users/Administrator/.zcode/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.zcode/ssh-mcp/launcher.js", "fixable": true },
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder\\settings.json", "configPath": "C:/Users/Administrator/.qoder/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.qoder/ssh-mcp/launcher.js", "fixable": true }
       }
     }
   },
@@ -155,7 +156,7 @@
     "git-commit": "F:\\idea-workspase-skills\\claude-git-commit-skill"
   },
   "relatedSkills": {
-    "agent-config-sync-check": "四端同步守卫：链接/硬链接/README 同步检查与修复",
+    "agent-config-sync-check": "五端同步守卫：链接/硬链接/README 同步检查与修复",
     "git-commit": "Git 提交规范",
     "code-check": "增量代码隐患检查",
     "daily-merge-gitlab-excel": "日报合并（手动兜底，已由日报管家接管，不推荐）",

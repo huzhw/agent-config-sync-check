@@ -509,6 +509,11 @@ function Add-SshRegistration {
                 $out = & node $helper $file $name ([string]$c.command) $launcher "--config=$cfgPath" 2>&1
                 if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*ZCODE_REGISTER_OK*') { throw "zcode register failed: $out" }
             }
+            'qoder-json' {
+                $helper = Join-Path $script:ScriptDir 'register-qoder.js'
+                $out = & node $helper $file $name ([string]$c.command) $launcher "--config=$cfgPath" 2>&1
+                if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*QODER_REGISTER_OK*') { throw "qoder register failed: $out" }
+            }
             default { throw "unsupported registration type: $($end.type)" }
         }
         # backup is kept on purpose (*.bak-sshmcp-* never enters git)
@@ -639,6 +644,30 @@ function Test-SshMcpRegistration {
                     continue
                 }
                 Add-Issue $agent 'ERROR' 'SshMcpLegacyRegistration' "mcp.servers.$name is not in launcher form (command=$([string]$srvObj.command))" ([bool]$end.fixable) -LinkName $endName
+            }
+            'qoder-json' {
+                $json = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json
+                if (-not $json.mcpServers) {
+                    Add-Issue $agent 'ERROR' 'SshMcpNotRegistered' "no mcpServers at all in $file" ([bool]$end.fixable) -LinkName $endName
+                    continue
+                }
+                $srvProp = $json.mcpServers.PSObject.Properties[$name]
+                if (-not $srvProp) {
+                    Add-Issue $agent 'ERROR' 'SshMcpNotRegistered' "mcpServers.$name missing in $file" ([bool]$end.fixable) -LinkName $endName
+                    continue
+                }
+                $srv = $srvProp.Value
+                if ([string]$srv.command -eq $command -and @($srv.args | ForEach-Object { [string]$_ }) -contains $launcherPath) {
+                    $argsText = @($srv.args | ForEach-Object { [string]$_ }) -join ' '
+                    if ($argsText -notlike "*--config=$cfgPath*") {
+                        Add-Issue $agent 'ERROR' 'SshMcpStalePath' "ssh args point elsewhere: $argsText" $true -LinkName $endName
+                    }
+                    if ($srv.env -and @($srv.env.PSObject.Properties).Count -gt 0) {
+                        Add-Issue $agent 'WARN' 'SshMcpLegacyEnv' "mcpServers.$name.env still carries values; launcher form needs no env" $false
+                    }
+                    continue
+                }
+                Add-Issue $agent 'ERROR' 'SshMcpLegacyRegistration' "mcpServers.$name is not in launcher form (command=$([string]$srv.command)) - passwords must live only in ssh-passwords.env" ([bool]$end.fixable) -LinkName $endName
             }
             default {
                 Add-Issue $agent 'WARN' 'SshRegUnsupported' "registration type '$($end.type)' not supported (skipped)" $false
