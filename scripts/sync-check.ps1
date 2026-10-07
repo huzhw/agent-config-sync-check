@@ -766,8 +766,10 @@ function ConvertTo-YamlArgLines {
     $out += "${Indent}args:"
     foreach ($a in @($ArgList)) {
         $v = [string]$a
-        if ($v -match "[\s""']") { $out += "$Indent- '" + $v.Replace("'", "''") + "'" }
-        else { $out += "$Indent- $v" }
+        # Always single-quote: bare scalars may not start with YAML reserved
+        # chars (e.g. "@upstash/..." npm scopes). Comparison is parse-level, so
+        # quoting style never causes drift.
+        $out += "$Indent- '" + $v.Replace("'", "''") + "'"
     }
     return $out
 }
