@@ -26,7 +26,7 @@
 |---|--------|------|
 | 1 | 链接覆盖 | 仓库每个含 `SKILL.md` 的目录（frontmatter `name` 自动推导）× 各启用端（`agents` 的 `skillsEnabled`，当前 5 端；CodeBuddy 复用 `.claude\skills`，无独立技能目录不单列），`skills\<name>` 必须是 Junction 且目标正确 |
 | 2 | 死链 | 各启用端指向本仓库的 Junction，目标必须还存在（删技能没拆链 = 死链） |
-| 3 | 硬链接组 | `~\.claude\CLAUDE.md` ⇄ `~\.dsh\AGENTS.md` ⇄ `~\.codex\AGENTS.md` ⇄ `~\.zcode\AGENTS.md` ⇄ `~\.qoder\AGENTS.md` ⇄ `~\.codebuddy\CLAUDE.md` 同组且非空 |
+| 3 | 硬链接组 | `~\.claude\CLAUDE.md` ⇄ `~\.dsh\AGENTS.md` ⇄ `~\.codex\AGENTS.md` ⇄ `~\.zcode\AGENTS.md` ⇄ `~\.qoder\AGENTS.md` ⇄ `~\.codebuddy\CLAUDE.md` ⇄ `~\.codebuddy\CODEBUDDY.md` 同组且非空 |
 | 4 | frontmatter | `name`/`description` 必填，`name` 全小写 kebab-case |
 | 5 | README 区块 | 仓库根 README 顶部技能列表（`BEGIN/END` 标记内）与实际技能集合一致 |
 | 6 | 红线 | `coding-rules` 是独立 git 仓库，任何端不得挂它 |

@@ -7,7 +7,7 @@
     { "name": "codex",  "label": "Codex",       "home": "C:\\Users\\Administrator\\.codex",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "zcode",  "label": "Zcode",       "home": "C:\\Users\\Administrator\\.zcode",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "qoder",  "label": "Qoder",       "home": "C:\\Users\\Administrator\\.qoder",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
-    { "name": "codebuddy", "label": "CodeBuddy", "home": "C:\\Users\\Administrator\\.codebuddy", "rulesFile": "CLAUDE.md", "skillsEnabled": false }
+    { "name": "codebuddy", "label": "CodeBuddy", "home": "C:\\Users\\Administrator\\.codebuddy", "rulesFile": "CODEBUDDY.md", "skillsEnabled": false }
   ],
   "rulesHardlink": {
     "enabled": true,
@@ -17,7 +17,8 @@
       "C:\\Users\\Administrator\\.codex\\AGENTS.md",
       "C:\\Users\\Administrator\\.zcode\\AGENTS.md",
       "C:\\Users\\Administrator\\.qoder\\AGENTS.md",
-      "C:\\Users\\Administrator\\.codebuddy\\CLAUDE.md"
+      "C:\\Users\\Administrator\\.codebuddy\\CLAUDE.md",
+      "C:\\Users\\Administrator\\.codebuddy\\CODEBUDDY.md"
     ],
     "manualCopies": [
       {
