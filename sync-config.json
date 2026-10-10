@@ -7,7 +7,8 @@
     { "name": "codex",  "label": "Codex",       "home": "C:\\Users\\Administrator\\.codex",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "zcode",  "label": "Zcode",       "home": "C:\\Users\\Administrator\\.zcode",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "qoder",  "label": "Qoder",       "home": "C:\\Users\\Administrator\\.qoder",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
-    { "name": "codebuddy", "label": "CodeBuddy", "home": "C:\\Users\\Administrator\\.codebuddy", "skillsEnabled": false }
+    { "name": "codebuddy", "label": "CodeBuddy", "home": "C:\\Users\\Administrator\\.codebuddy", "skillsEnabled": false },
+    { "name": "minimax", "label": "MiniMax Code", "home": "C:\\Users\\Administrator\\.minimax", "rulesFile": "AGENTS.md", "skillsEnabled": false }
   ],
   "rulesHardlink": {
     "enabled": true,
@@ -16,7 +17,8 @@
       "C:\\Users\\Administrator\\.dsh\\AGENTS.md",
       "C:\\Users\\Administrator\\.codex\\AGENTS.md",
       "C:\\Users\\Administrator\\.zcode\\AGENTS.md",
-      "C:\\Users\\Administrator\\.qoder\\AGENTS.md"
+      "C:\\Users\\Administrator\\.qoder\\AGENTS.md",
+      "C:\\Users\\Administrator\\.minimax\\AGENTS.md"
     ],
     "manualCopies": [
       {
@@ -178,7 +180,7 @@
     "git-commit": "F:\\idea-workspase-skills\\claude-git-commit-skill"
   },
   "relatedSkills": {
-    "agent-config-sync-check": "六端同步守卫：链接/硬链接/README 同步检查与修复",
+    "agent-config-sync-check": "七端同步守卫：链接/硬链接/README 同步检查与修复",
     "git-commit": "Git 提交规范",
     "code-check": "增量代码隐患检查",
     "daily-merge-gitlab-excel": "日报合并（手动兜底，已由日报管家接管，不推荐）",
@@ -189,9 +191,5 @@
     "reread-rules": "重载 CLAUDE.md / AGENTS.md 规则",
     "coding-rules": "编码规则库（独立仓库，非 skill）"
   },
-  "redlineDirs": ["coding-rules"],
-  "task": {
-    "name": "agent-config-sync-check",
-    "dailyTime": "09:00"
-  }
+  "redlineDirs": ["coding-rules"]
 }
