@@ -18,7 +18,7 @@
 - 五个全局目录都是指向 F 仓库的 junction，五处是**同一个目录**，不是副本。
 - 修改 F 仓库，五端（外加经 `.claude` 复用的 CodeBuddy，共六端）立刻生效；在全局路径下改文件，F 仓库同步变化。
 - 日常维护只改 F 仓库（git 提交推送后全局自动一致），**不需要手动复制同步**。
-- 本 skill 于 2026-08-31 新增（首发四端，2026-09-18 接入 Qoder 升五端，2026-10-10 接入 CodeBuddy 升六端——其 skills 复用 `.claude`，规则走硬链接组 `~\.codebuddy\CLAUDE.md`，无更名历史）。
+- 本 skill 于 2026-08-31 新增（首发四端，2026-09-18 接入 Qoder 升五端，2026-10-10 接入 CodeBuddy 升六端——其 skills 复用 `.claude`，规则走 `~\.codebuddy\rules\core-discipline.md` 手工副本（同日硬链接 `CLAUDE.md`/`CODEBUDDY.md` 摘除），无更名历史；同日接入 MiniMax Code 升七端——仅规则硬链接组 `~\.minimax\AGENTS.md`，不挂技能）。
 
 ## 检查是否正常
 
@@ -50,5 +50,5 @@ rd "C:\Users\Administrator\.qoder\skills\agent-config-sync-check"
 
 ## 本 skill 特殊差异
 
-- 本身就是六端同步的守卫：链接断了它自己会查出来，`JUNCTION说明.md` 的指向关系与 `sync-config.json` 保持一致。
+- 本身就是七端同步的守卫：链接断了它自己会查出来，`JUNCTION说明.md` 的指向关系与 `sync-config.json` 保持一致。
 - 检查日志 `logs\` 不入 git，删了不影响功能。

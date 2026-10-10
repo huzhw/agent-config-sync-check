@@ -1,11 +1,11 @@
 ---
 name: agent-config-sync-check
-description: 六端同步守卫：定期检查 Claude Code / DSH / Codex / ZCode / Qoder / CodeBuddy 六个工具端与自研 skill 仓库（F:\idea-workspase-skills）之间的 Junction 技能链接、全局规则硬链接组（CLAUDE.md/AGENTS.md）、仓库根 README 技能列表、ssh-mcp 配置同步、通用 MCP 与防护 hooks 注册同步是否完好，防止同步被破坏；机械性问题可自动修复；并承载新 skill 上架七步流程与 git 提交推送规范。触发词：检查同步、同步检查、配置同步、五端同步、六端同步、四端同步、跨端同步、检查链接、链接检查、上架技能、新增技能、新加技能、sync-check、agent-config-sync-check、ssh-mcp、ssh配置同步、ssh配置。
+description: 七端同步守卫：定期检查 Claude Code / DSH / Codex / ZCode / Qoder / CodeBuddy / MiniMax Code 七个工具端与自研 skill 仓库（F:\idea-workspase-skills）之间的 Junction 技能链接、全局规则硬链接组（CLAUDE.md/AGENTS.md）、仓库根 README 技能列表、ssh-mcp 配置同步、通用 MCP 与防护 hooks 注册同步是否完好，防止同步被破坏；机械性问题可自动修复；并承载新 skill 上架七步流程与 git 提交推送规范。触发词：检查同步、同步检查、配置同步、五端同步、六端同步、七端同步、四端同步、跨端同步、检查链接、链接检查、上架技能、新增技能、新加技能、sync-check、agent-config-sync-check、ssh-mcp、ssh配置同步、ssh配置。
 author: 胡志伟
 motto: "同步不怕断，怕断了没人知道——定期查，机械修，分叉留给人工。"
 ---
 
-# agent-config-sync-check —— 六端同步守卫
+# agent-config-sync-check —— 七端同步守卫
 
 ## 这是什么
 
@@ -19,12 +19,13 @@ motto: "同步不怕断，怕断了没人知道——定期查，机械修，分
 | ZCode | `~\.zcode` | `skills\`（Junction→仓库 + 中转链接） | `AGENTS.md`（硬链接组） |
 | Qoder | `~\.qoder` | `skills\`（Junction→仓库） | `AGENTS.md`（硬链接组） |
 | CodeBuddy | `~\.codebuddy` | （无独立技能目录，复用 `~\.claude\skills` 的 Junction） | `CLAUDE.md`（硬链接组） |
+| MiniMax Code | `~\.minimax` | （不挂技能，`skillsEnabled: false`） | `AGENTS.md`（硬链接组，2026-10-10 接入） |
 
-全局规则是**一个硬链接组**（同一份文件 6 个名字，含 Qoder 与 CodeBuddy）。`.zcode` 里还有指向 `.claude`、`.codex\.system` 的**中转链接**。
+全局规则是**一个硬链接组**（同一份文件 7 个名字：硬链接 6 份 = `.claude\CLAUDE.md` + 五处 `AGENTS.md`，含 Qoder 与 MiniMax Code；CodeBuddy 是跟随组的手工副本）。`.zcode` 里还有指向 `.claude`、`.codex\.system` 的**中转链接**。
 
 ## 使用方法
 
-用户说"检查同步 / 五端同步 / 六端同步 / 检查链接"等触发词时，执行检查：
+用户说"检查同步 / 五端同步 / 六端同步 / 七端同步 / 检查链接"等触发词时，执行检查：
 
 ```powershell
 pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\sync-check.ps1"
@@ -50,7 +51,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 
 1. **技能链接覆盖**：仓库里每个含 `SKILL.md` 的目录（期望集合从 frontmatter `name` 自动推导，新增技能自动纳入）× 各启用技能端（`agents` 中 `skillsEnabled: true`，当前 5 端；CodeBuddy 端 `skillsEnabled: false`——它复用 `~\.claude\skills`，无独立技能目录），`skills\<name>` 必须存在、是 Junction、目标等于仓库规范路径
 2. **死链**：各启用端 `skills\` 下所有指向本仓库的 Junction，目标必须还存在（仓库删了技能但链接没拆 = 死链）
-3. **硬链接组**：规则文件 5 个路径都存在（含 Qoder）、`LinkType=HardLink`、同组（`(Get-Item).Target` 互含对方路径）、非空
+3. **硬链接组**：规则文件 6 个路径都存在（含 Qoder 与 MiniMax Code）、`LinkType=HardLink`、同组（`(Get-Item).Target` 互含对方路径）、非空
 4. **frontmatter 健全**：`name`、`description` 必填；`name` 全小写 kebab-case（`^[a-z0-9]+(-[a-z0-9]+)*$`）
 5. **README 技能列表**：仓库根 `README.md` 顶部区块（`<!-- sync-check:skills BEGIN/END -->` 标记）与期望技能集合一致
 6. **红线**：`coding-rules` 是独立 git 仓库、非技能，各启用端 `skills\` 下不得出现指向它的链接
@@ -104,7 +105,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 
 ## 配置
 
-`sync-config.json`：六端路径与开关（`skillsEnabled`；CodeBuddy 端为 `false`——复用 `~\.claude\skills`，不建独立技能链接）、硬链接组路径与手工副本清单（`rulesHardlink.paths` / `rulesHardlink.manualCopies`）、README 标记、红线目录、计划任务名、`sshMcpConfig`（ssh-mcp 配置同步：数据源目录、Junction 端清单、各端注册方式与密码源）、`mcpSync`（通用 MCP 注册同步：servers 数组登记期望形态与端位置）、`hooksSync`（防护 hooks 注册同步：源 settings.json、ZCode 端落点与转换/排除/改写规则、Codex 端只报告、Qoder/CodeBuddy 端落点 settings.json hooks 组）。以后新增端：`agents` 数组加一条（`name`/`label`/`home`/`rulesFile`/`skillsEnabled` 五个字段，其中 `label` 用于 `JUNCTION说明.md` 表格的端显示名，缺了补行会写空），`skillsEnabled: true` 即让技能链接覆盖、死链、红线、`JUNCTION说明.md` 补行全部自动纳入该端（检查与修复统一读 `agents`，无需再改脚本）；还要该端进规则硬链接组则另在 `rulesHardlink.paths` 加一条（文件缺失时 `-FixHardlink` 在哈希全等下自动补建）；某端暂时不想管：把它的 `skillsEnabled` 改 `false`；新增跨卷规则副本：`manualCopies` 加一条（`stripHeaderComment: true` = 副本开头头注释不参与比对）。
+`sync-config.json`：七端路径与开关（`skillsEnabled`；CodeBuddy 端为 `false`——复用 `~\.claude\skills`，不建独立技能链接；MiniMax Code 端为 `false`——不挂技能，仅接规则硬链接组）、硬链接组路径与手工副本清单（`rulesHardlink.paths` / `rulesHardlink.manualCopies`）、README 标记、红线目录、计划任务名、`sshMcpConfig`（ssh-mcp 配置同步：数据源目录、Junction 端清单、各端注册方式与密码源）、`mcpSync`（通用 MCP 注册同步：servers 数组登记期望形态与端位置）、`hooksSync`（防护 hooks 注册同步：源 settings.json、ZCode 端落点与转换/排除/改写规则、Codex 端只报告、Qoder/CodeBuddy 端落点 settings.json hooks 组）。以后新增端：`agents` 数组加一条（`name`/`label`/`home`/`rulesFile`/`skillsEnabled` 五个字段，其中 `label` 用于 `JUNCTION说明.md` 表格的端显示名，缺了补行会写空），`skillsEnabled: true` 即让技能链接覆盖、死链、红线、`JUNCTION说明.md` 补行全部自动纳入该端（检查与修复统一读 `agents`，无需再改脚本）；还要该端进规则硬链接组则另在 `rulesHardlink.paths` 加一条（文件缺失时 `-FixHardlink` 在哈希全等下自动补建）；某端暂时不想管：把它的 `skillsEnabled` 改 `false`；新增跨卷规则副本：`manualCopies` 加一条（`stripHeaderComment: true` = 副本开头头注释不参与比对）。
 
 六端防护钩子（hooks/规则/插件）的能力对照与配置位置见本目录 `HOOKS说明.md`；脚本事实源与分发关系见 `coding-rules\SYNC说明.md` 第三节。
 
@@ -152,7 +153,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 
   当前标准列表：
   ```markdown
-  - [agent-config-sync-check](https://github.com/huzhw/agent-config-sync-check)：六端同步守卫：链接/硬链接/README 同步检查与修复
+  - [agent-config-sync-check](https://github.com/huzhw/agent-config-sync-check)：七端同步守卫：链接/硬链接/README 同步检查与修复
   - [git-commit](https://github.com/huzhw/git-commit-skill)：Git 提交规范
   - [daily-record-gitlab-md](https://github.com/huzhw/daily-record-gitlab-md-skill)：日报记录
   - [daily-merge-gitlab-excel](https://github.com/huzhw/daily-merge-gitlab-excel-skill)：日报合并
