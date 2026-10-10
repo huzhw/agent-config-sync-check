@@ -1,6 +1,6 @@
 # JUNCTION 说明 — agent-config-sync-check
 
-> 本目录已与四个全局 skill 目录建立 junction，**实时双向同步，改哪边都一样**。
+> 本目录已与五个全局 skill 目录建立 junction，**实时双向同步，改哪边都一样**（CodeBuddy 端经 `.claude` 链接复用，无独立 junction）。
 
 ## 指向关系
 
@@ -16,9 +16,9 @@
 ## 说明
 
 - 五个全局目录都是指向 F 仓库的 junction，五处是**同一个目录**，不是副本。
-- 修改 F 仓库，五端立刻生效；在全局路径下改文件，F 仓库同步变化。
+- 修改 F 仓库，五端（外加经 `.claude` 复用的 CodeBuddy，共六端）立刻生效；在全局路径下改文件，F 仓库同步变化。
 - 日常维护只改 F 仓库（git 提交推送后全局自动一致），**不需要手动复制同步**。
-- 本 skill 于 2026-08-31 新增（首发四端，2026-09-18 接入 Qoder 升五端，无更名历史）。
+- 本 skill 于 2026-08-31 新增（首发四端，2026-09-18 接入 Qoder 升五端，2026-10-10 接入 CodeBuddy 升六端——其 skills 复用 `.claude`，规则走硬链接组 `~\.codebuddy\CLAUDE.md`，无更名历史）。
 
 ## 检查是否正常
 
@@ -50,5 +50,5 @@ rd "C:\Users\Administrator\.qoder\skills\agent-config-sync-check"
 
 ## 本 skill 特殊差异
 
-- 本身就是五端同步的守卫：链接断了它自己会查出来，`JUNCTION说明.md` 的指向关系与 `sync-config.json` 保持一致。
+- 本身就是六端同步的守卫：链接断了它自己会查出来，`JUNCTION说明.md` 的指向关系与 `sync-config.json` 保持一致。
 - 检查日志 `logs\` 不入 git，删了不影响功能。
