@@ -11,10 +11,7 @@ if (!file || !launcherPath || !cfgPath) {
 const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
 fs.copyFileSync(file, file + '.bak-sshmcp-' + stamp);
 const d = JSON.parse(fs.readFileSync(file, 'utf8'));
-if (!d.mcpServers) {
-  console.error('no mcpServers');
-  process.exit(1);
-}
+if (!d.mcpServers) d.mcpServers = {};
 d.mcpServers.ssh = { command: 'node', args: [launcherPath, '--config=' + cfgPath], env: {} };
 fs.writeFileSync(file, JSON.stringify(d, null, 2), 'utf8');
 const check = JSON.parse(fs.readFileSync(file, 'utf8'));
