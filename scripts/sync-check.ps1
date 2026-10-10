@@ -248,6 +248,12 @@ function Get-RulesCoreText {
     param([string]$Path, [bool]$StripHeaderComment)
     $text = [IO.File]::ReadAllText($Path)
     if ($StripHeaderComment) {
+        # Strip a leading YAML frontmatter block first (CodeBuddy user-rule
+        # copies carry alwaysApply:true frontmatter - metadata, not body).
+        # \A-anchored + paired closing --- : body '---' rules are never touched.
+        # No-op when a side has none (e.g. the F: source itself).
+        $fm = [regex]::Match($text, '(?s)\A\s*---\r?\n.*?\r?\n---\s*')
+        if ($fm.Success) { $text = $text.Substring($fm.Length) }
         $m = [regex]::Match($text, '(?s)\A\s*<!--.*?-->\s*')
         if ($m.Success) { $text = $text.Substring($m.Length) }
     }
@@ -292,16 +298,23 @@ function Test-RulesManualCopy {
 
 function Fix-RulesCopy {
     # overwrite the mirror body from the group, PRESERVING the mirror's own
-    # leading <!-- ... --> header comment (identity doc, differs by design)
+    # leading YAML frontmatter (if any) AND its <!-- ... --> header comment
+    # (identity doc, differs by design)
     param([object]$Cfg, [string]$CopyPath)
     $src = Get-RulesGroupSource $Cfg
     if (-not $src) { return $false }
     $srcText = Get-RulesCoreText -Path $src -StripHeaderComment $true
+    $front = ''
     $header = ''
     $cpText = [IO.File]::ReadAllText($CopyPath)
+    $fm = [regex]::Match($cpText, '(?s)\A\s*---\r?\n.*?\r?\n---\s*')
+    if ($fm.Success) { $front = $cpText.Substring(0, $fm.Length).TrimEnd(); $cpText = $cpText.Substring($fm.Length) }
     $m = [regex]::Match($cpText, '(?s)\A\s*<!--.*?-->\s*')
-    if ($m.Success) { $header = $cpText.Substring(0, $m.Length).TrimEnd() + "`r`n`r`n" }
-    Write-NoBomUtf8 -Path $CopyPath -Text ($header + $srcText + "`r`n")
+    if ($m.Success) { $header = $cpText.Substring(0, $m.Length).TrimEnd() }
+    $prefix = ''
+    if ($front)  { $prefix += $front + "`r`n`r`n" }
+    if ($header) { $prefix += $header + "`r`n`r`n" }
+    Write-NoBomUtf8 -Path $CopyPath -Text ($prefix + $srcText + "`r`n")
     return $true
 }
 
