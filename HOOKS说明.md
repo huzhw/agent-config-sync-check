@@ -1,10 +1,10 @@
 # 六端防护能力对照（HOOKS 说明）
 
 > 六端工具（Claude Code / DSH / Codex / Zcode / Qoder / CodeBuddy）的防护钩子**能力对齐、实现方式各异**：
-> Claude 走 settings.json 挂 shell 脚本；DSH 走声明式规则 + 插件（无用户 hooks 机制）；Codex 走 config.toml 的 hooks 特性；Zcode 走 `~\.zcode\cli\config.json` 的 hooks 段（process 型，注册从 Claude settings.json 自动同步）；Qoder 走 `~\.qoder\settings.json` 的 hooks 组（与 Claude Code 同构，注册从 Claude settings.json 自动同步）；CodeBuddy 走 `~\.codebuddy\settings.json` 的 hooks 组（Claude Code 同构生态，注册同样自动同步）。
+> Claude 走 settings.json 挂 shell 脚本；DSH 走声明式规则 + 插件（无用户 hooks 机制）；Codex 走 config.toml 的 hooks 特性；Zcode 走 `~\.zcode\cli\config.json` 的 hooks 段（process 型，注册从 Claude settings.json 自动同步）；Qoder 走 `~\.qoder-cn\settings.json` 的 hooks 组（与 Claude Code 同构，注册从 Claude settings.json 自动同步；2026-10-11 国际版卸载，落点由 `~\.qoder` 换 `~\.qoder-cn`）；CodeBuddy 走 `~\.codebuddy\settings.json` 的 hooks 组（Claude Code 同构生态，注册同样自动同步）。
 > 脚本分发细节（事实源、复制关系）见 `coding-rules\SYNC说明.md` 第三节。
 >
-> **Qoder 已接入 hooksSync**：落点 `~\.qoder\settings.json` 的 `hooks` 组（SessionEnd/Stop/MultiEdit 全支持、timeout 秒制），复用 `hooks-convert.js` 转换（`--source=qoder` 改写、排除 tokentracker/notify.cjs），-Fix 经 `register-qoder-hooks.js` 幂等 upsert（自动备份+写后复验，只增不删）。
+> **Qoder 已接入 hooksSync**：落点 `~\.qoder-cn\settings.json` 的 `hooks` 组（SessionEnd/Stop/MultiEdit 全支持、timeout 秒制；2026-10-11 起，旧 `~\.qoder` 为国际版遗留不再注册），复用 `hooks-convert.js` 转换（`--source=qoder` 改写、排除 tokentracker/notify.cjs），-Fix 经 `register-qoder-hooks.js` 幂等 upsert（自动备份+写后复验，只增不删）。
 >
 > **CodeBuddy 已接入 hooksSync**（2026-10-10）：落点 `~\.codebuddy\settings.json` 的 `hooks` 组（Claude Code 同构），复用 Qoder 的转换管线（process 型、去 MultiEdit、`--source=codebuddy` 改写、排除 tokentracker/notify.cjs——它有自带的 `--source=codebuddy` 采集注册），-Fix 经 `register-codebuddy-hooks.js` 幂等 upsert（自动备份+写后复验，只增不删）。
 
