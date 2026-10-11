@@ -1388,6 +1388,17 @@ function Test-Readme {
     $extra = @($listed.Keys | Where-Object { -not $Expected.ContainsKey($_) })
     if ($missing.Count -gt 0) { Add-Issue 'README' 'ERROR' 'ReadmeMissingEntries' "missing: $($missing -join ', ')" $true }
     if ($extra.Count -gt 0) { Add-Issue 'README' 'ERROR' 'ReadmeExtraEntries' "extra: $($extra -join ', ')" $true }
+    # whole-block drift: when the entry set is fine, the block body must still match
+    # the generator output - catches a SKILL.md description change that was never
+    # regenerated (entry names alone would still pass). Normalize CRLF before the
+    # compare: git may hold the file with LF while the generator emits CRLF.
+    if ($missing.Count -eq 0 -and $extra.Count -eq 0) {
+        $wantNorm = ((New-SkillsSection $Cfg $Expected).Trim() -replace "`r`n", "`n")
+        $haveNorm = ($section.Trim() -replace "`r`n", "`n")
+        if ($wantNorm -ne $haveNorm) {
+            Add-Issue 'README' 'ERROR' 'ReadmeBlockDrift' "skill-list block content differs from generator output (descriptions/numbering/format)" $true
+        }
+    }
 }
 
 # ---------- checks 7 + 8: JUNCTION docs / README related links ----------
@@ -1783,6 +1794,11 @@ function Apply-Fixes {
                 'ReadmeExtraEntries' {
                     Fix-ReadmeSection $Cfg $Expected
                     Write-Host "  [FIXED] README: regenerated skill-list section"
+                    $script:Fixed++
+                }
+                'ReadmeBlockDrift' {
+                    Fix-ReadmeSection $Cfg $Expected
+                    Write-Host "  [FIXED] README: regenerated skill-list block (descriptions/format resynced)"
                     $script:Fixed++
                 }
                 'JunctionDocMissing' {

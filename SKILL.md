@@ -54,7 +54,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 2. **死链**：各启用端 `skills\` 下所有指向本仓库的 Junction，目标必须还存在（仓库删了技能但链接没拆 = 死链）
 3. **硬链接组**：规则文件 6 个路径都存在（含 Qoder CN 与 MiniMax Code）、`LinkType=HardLink`、同组（`(Get-Item).Target` 互含对方路径）、非空
 4. **frontmatter 健全**：`name`、`description` 必填；`name` 全小写 kebab-case（`^[a-z0-9]+(-[a-z0-9]+)*$`）
-5. **README 技能列表**：仓库根 `README.md` 顶部区块（`<!-- sync-check:skills BEGIN/END -->` 标记）与期望技能集合一致
+5. **README 技能列表**：仓库根 `README.md` 顶部区块（`<!-- sync-check:skills BEGIN/END -->` 标记）与期望技能集合一致，且区块内容（描述文案/序号/格式）与生成器输出逐字一致——描述漂移报 `ReadmeBlockDrift`（-Fix 整块重生成，SKILL.md description 改动后区块自动跟随）
 6. **红线**：`coding-rules` 是独立 git 仓库、非技能，各启用端 `skills\` 下不得出现指向它的链接
 7. **JUNCTION说明.md**：每个技能目录（家族子技能除外，其说明在主目录）必须有；文档须覆盖全部启用端的 `\skills\<name>` 路径；路径上下文里的技能名不得是**陈旧名**（改名后没跟上）或**污染串**（重复前缀叠加，如 `deepseek-harness-deepseek-harness-…`，多来自粗暴的字符串替换）
 8. **README 相关技能互链**：每个技能 README（git-commit 等"仓库根 ≠ 技能目录"的按 `repoRoots` 映射定位）的「相关技能」列表必须含全部其他技能与 `coding-rules` 的 GitHub 链接，互链不断档；链接行**描述文案**还须与 `sync-config.json` 的 `relatedSkills` 描述逐字一致，漂移报 `RelatedLinksDescDrift`（-Fix 按 config 原位重写该行，改描述文案后跑 -Fix 全部 skill README 一键跟随）

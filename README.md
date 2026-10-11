@@ -28,7 +28,7 @@
 | 2 | 死链 | 各启用端指向本仓库的 Junction，目标必须还存在（删技能没拆链 = 死链） |
 | 3 | 硬链接组 | `~\.claude\CLAUDE.md` ⇄ `~\.dsh\AGENTS.md` ⇄ `~\.codex\AGENTS.md` ⇄ `~\.zcode\AGENTS.md` ⇄ `~\.qoder-cn\AGENTS.md`（2026-10-11 由 .qoder 换端） ⇄ `~\.minimax\AGENTS.md` 同组且非空；CodeBuddy 走 `rules\core-discipline.md` 手工副本不在组（官方不读裸 CLAUDE.md，2026-10-10 实证） |
 | 4 | frontmatter | `name`/`description` 必填，`name` 全小写 kebab-case |
-| 5 | README 区块 | 仓库根 README 顶部技能列表（`BEGIN/END` 标记内）与实际技能集合一致 |
+| 5 | README 区块 | 仓库根 README 顶部技能列表（`BEGIN/END` 标记内）与实际技能集合一致，且描述文案/序号与生成器输出逐字一致（漂移报 `ReadmeBlockDrift`，-Fix 整块重生成） |
 | 6 | 红线 | `coding-rules` 是独立 git 仓库，任何端不得挂它 |
 | 7 | JUNCTION说明.md | 每技能必有（家族子技能除外），各启用端路径齐全，无陈旧名/污染串；缺失或污染自动重建，缺端自动补行（按 `agents` 端清单跟随） |
 | 8 | 相关技能互链 | 每技能 README「相关技能」列表含全部其他技能的 GitHub 链接，缺的自动补行；描述文案与 `sync-config.json` 逐字一致，漂移自动原位重写 |
