@@ -1,6 +1,6 @@
 # agent-config-sync-check — 七端同步守卫
 
-定期检查 Claude Code / DSH / Codex / ZCode / Qoder CN / CodeBuddy / MiniMax Code 七个工具端与自研 skill 仓库（`F:\idea-workspase-skills`）之间的同步完整性：Junction 技能链接、全局规则硬链接组、README 技能列表、ssh-mcp 配置同步——防止同步被破坏了没人知道。
+定期检查 Claude Code / DSH / Codex / ZCode / Qoder CN / CodeBuddy / MiniMax Code 七个工具端（WorkBuddy 2026-10-11 以部分端接入：仅规则手工副本）与自研 skill 仓库（`F:\idea-workspase-skills`）之间的同步完整性：Junction 技能链接、全局规则硬链接组、README 技能列表、ssh-mcp 配置同步——防止同步被破坏了没人知道。
 
 ## 相关技能
 
@@ -36,7 +36,7 @@
 | 10 | ssh-mcp 各端注册 | 六端统一 launcher 形态：`node <home>\ssh-mcp\launcher.js --config=<本端toml>`（Claude `.claude.json` / DSH web patch / Codex `config.toml` / ZCode `.zcode\cli\config.json` / Qoder CN `.qoder-cn\mcp.json`，2026-10-11 换端：国内版 MCP 落点为独立 mcp.json / CodeBuddy `.codebuddy\mcp.json`），注册块零密码；密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份并做对账（键须覆盖 toml 全部 profile，防新增服务器忘配密码）；旧形态/缺失 -Fix 自动迁移（备份→校验→失败回滚） |
 | 11 | 通用 MCP 同步 | `sync-config.json` 的 `mcpSync.servers` 登记的 MCP（codegraph/dbx…）各端 command+args 解析级比对（node YAML / python tomllib / JSON，共享 insert 块也能识别）；支持 `perEndCommand`/`perEndArgsPrepend`/`perEndArgs` 按端覆盖（比对与修复都按生效值）；Claude 端 `.claude.json` 只读检查不自动写；缺失/漂移 -Fix 自动补齐重写；env 不跨端，带敏感值的学 ssh 用 launcher；http 型（idea）暂不支持 |
 | 12 | 防护 hooks 同步 | 源 = `~\.claude\settings.json` hooks 段；ZCode 落点 `~\.zcode\cli\config.json` 的 `hooks.events`（runner 须 `enabled: true`），经 `hooks-convert.js` 转换（丢 SessionEnd、去 MultiEdit、`--source=zcode` 改写、shell 串拆 process 型）；缺失/漂移 -Fix 幂等合并；Qoder CN（`~\.qoder-cn`，2026-10-11 换端）/CodeBuddy 落点各自 `settings.json` 的 hooks 组（与 Claude 同构，`--source=qoder`/`--source=codebuddy` 改写、排除 tokentracker）；Codex 端只报告（trusted_hash 机制不可自动改写） |
-| 13 | 规则手工副本 | 跨卷副本（`coding-rules\CLAUDE.md`，F 盘进不了硬链接组）登记在 `rulesHardlink.manualCopies`：剥掉副本自身开头 `<!-- -->` 头注释后正文须与组正文一致；漂移 -Fix 自动重写（保留其头注释），副本整份丢失不自动修（要先写身份头注释） |
+| 13 | 规则手工副本 | 跨卷/异机制副本登记在 `rulesHardlink.manualCopies`：`coding-rules\CLAUDE.md`（F 盘进不了硬链接组）；WorkBuddy 用户级记忆 `~\.workbuddy\user-<id>-personal\MEMORY.md`（2026-10-11 接入，需专属头注释且有每会话约 4000 字符上限）：剥掉副本自身开头 `<!-- -->` 头注释后正文须与组正文一致；漂移 -Fix 自动重写（保留其头注释），副本整份丢失不自动修（要先写身份头注释） |
 
 `.zcode` 里的中转链接（→ `.claude` 官方技能、→ `.codex\.system` 系统技能）只验"上游还在"，上游删了报死链，**只报告不自动修**。
 
