@@ -3,12 +3,13 @@
   "excludeDirs": [".idea", "scripts", ".system", "logs"],
   "agents": [
     { "name": "claude", "label": "Claude Code", "home": "C:\\Users\\Administrator\\.claude", "rulesFile": "CLAUDE.md", "skillsEnabled": true },
-    { "name": "dsh",    "label": "DSH",         "home": "C:\\Users\\Administrator\\.dsh",    "rulesFile": "AGENTS.md", "skillsEnabled": true },
+    { "name": "dsh",    "label": "DeepSeek Harness", "home": "C:\\Users\\Administrator\\.dsh",    "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "codex",  "label": "Codex",       "home": "C:\\Users\\Administrator\\.codex",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "zcode",  "label": "Zcode",       "home": "C:\\Users\\Administrator\\.zcode",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "qoder",  "label": "Qoder CN",    "home": "C:\\Users\\Administrator\\.qoder-cn",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "codebuddy", "label": "CodeBuddy", "home": "C:\\Users\\Administrator\\.codebuddy", "skillsEnabled": false },
-    { "name": "minimax", "label": "MiniMax Code", "home": "C:\\Users\\Administrator\\.minimax", "rulesFile": "AGENTS.md", "skillsEnabled": false }
+    { "name": "minimax", "label": "MiniMax Code", "home": "C:\\Users\\Administrator\\.minimax", "rulesFile": "AGENTS.md", "skillsEnabled": false },
+    { "name": "workbuddy", "label": "WorkBuddy", "home": "C:\\Users\\Administrator\\.workbuddy", "skillsEnabled": false }
   ],
   "rulesHardlink": {
     "enabled": true,
@@ -184,14 +185,14 @@
     "git-commit": "F:\\idea-workspase-skills\\claude-git-commit-skill"
   },
   "relatedSkills": {
-    "agent-config-sync-check": "七端同步守卫：链接/硬链接/README 同步检查与修复",
+    "agent-config-sync-check": "八端同步守卫：链接/硬链接/README 同步检查与修复",
     "git-commit": "Git 提交规范",
     "code-check": "增量代码隐患检查",
     "daily-merge-gitlab-excel": "日报合并（手动兜底，已由日报管家接管，不推荐）",
     "daily-record-gitlab-md": "日报记录（第一步）",
     "daily-report-panel": "日报管家（关联仓库，非 skill，自动合并/导出/发件）",
-    "deepseek-harness-plugin-doctor": "DSH 插件与升级体检医生",
-    "deepseek-harness-settings-curator": "DSH 模型配置梳理",
+    "deepseek-harness-plugin-doctor": "DeepSeek Harness 插件与升级体检医生",
+    "deepseek-harness-settings-curator": "DeepSeek Harness 模型配置梳理",
     "reread-rules": "重载 CLAUDE.md / AGENTS.md 规则",
     "coding-rules": "编码规则库（独立仓库，非 skill）"
   },

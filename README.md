@@ -1,15 +1,15 @@
-# agent-config-sync-check — 七端同步守卫
+# agent-config-sync-check — 八端同步守卫
 
-定期检查 Claude Code / DSH / Codex / ZCode / Qoder CN / CodeBuddy / MiniMax Code 七个工具端（WorkBuddy 2026-10-11 以部分端接入：仅规则手工副本）与自研 skill 仓库（`F:\idea-workspase-skills`）之间的同步完整性：Junction 技能链接、全局规则硬链接组、README 技能列表、ssh-mcp 配置同步——防止同步被破坏了没人知道。
+定期检查 Claude Code / DeepSeek Harness / Codex / ZCode / Qoder CN / CodeBuddy / MiniMax Code / WorkBuddy 八个工具端（WorkBuddy 2026-10-11 以部分端接入：仅规则手工副本）与自研 skill 仓库（`F:\idea-workspase-skills`）之间的同步完整性：Junction 技能链接、全局规则硬链接组、README 技能列表、ssh-mcp 配置同步——防止同步被破坏了没人知道。
 
 ## 相关技能
 
 - [git-commit](https://github.com/huzhw/git-commit-skill)：Git 提交规范
-- [daily-record-gitlab-md](https://github.com/huzhw/daily-record-gitlab-md-skill)：日报记录
-- [daily-merge-gitlab-excel](https://github.com/huzhw/daily-merge-gitlab-excel-skill)：日报合并
+- [daily-record-gitlab-md](https://github.com/huzhw/daily-record-gitlab-md-skill)：日报记录（第一步）
+- [daily-merge-gitlab-excel](https://github.com/huzhw/daily-merge-gitlab-excel-skill)：日报合并（手动兜底，已由日报管家接管，不推荐）
 - [code-check](https://github.com/huzhw/code-check-skill)：增量代码隐患检查
-- [deepseek-harness-settings-curator](https://github.com/huzhw/deepseek-harness-settings-curator)：DSH 模型配置梳理
-- [deepseek-harness-plugin-doctor](https://github.com/huzhw/deepseek-harness-plugin-doctor)：DSH 插件与升级体检医生
+- [deepseek-harness-settings-curator](https://github.com/huzhw/deepseek-harness-settings-curator)：DeepSeek Harness 模型配置梳理
+- [deepseek-harness-plugin-doctor](https://github.com/huzhw/deepseek-harness-plugin-doctor)：DeepSeek Harness 插件与升级体检医生
 - [reread-rules](https://github.com/huzhw/reread-rules-skill)：重载 CLAUDE.md / AGENTS.md 规则
 - [coding-rules](https://github.com/huzhw/coding-rules)：编码规则库（独立仓库，非 skill）
 - [daily-report-panel](https://github.com/huzhw/daily-report-panel)：日报管家（关联仓库，非 skill，自动合并/导出/发件）
@@ -18,7 +18,7 @@
 
 ## 解决了什么问题
 
-**多端 Junction 架构下（当前 7 端，MiniMax Code 仅接规则硬链接组、不挂技能），同步坏了没有任何报警。** 技能目录删了链接悬空、新增 skill 忘挂某端、规则文件被编辑器"另存"成独立副本（硬链接组断裂，改一端其他三端不跟）、README 技能列表过期——这些全是静默故障，等到用的时候才发现技能不见了。这个技能把各端状态一遍扫完，机械性问题自动修，分叉问题报给人。
+**多端 Junction 架构下（当前 8 端，MiniMax Code 仅接规则硬链接组、WorkBuddy 仅接规则手工副本，均不挂技能），同步坏了没有任何报警。** 技能目录删了链接悬空、新增 skill 忘挂某端、规则文件被编辑器"另存"成独立副本（硬链接组断裂，改一端其他三端不跟）、README 技能列表过期——这些全是静默故障，等到用的时候才发现技能不见了。这个技能把各端状态一遍扫完，机械性问题自动修，分叉问题报给人。
 
 ## 检查项（13 条）
 
@@ -31,9 +31,9 @@
 | 5 | README 区块 | 仓库根 README 顶部技能列表（`BEGIN/END` 标记内）与实际技能集合一致 |
 | 6 | 红线 | `coding-rules` 是独立 git 仓库，任何端不得挂它 |
 | 7 | JUNCTION说明.md | 每技能必有（家族子技能除外），各启用端路径齐全，无陈旧名/污染串；缺失或污染自动重建，缺端自动补行（按 `agents` 端清单跟随） |
-| 8 | 相关技能互链 | 每技能 README「相关技能」列表含全部其他技能的 GitHub 链接，缺的自动补行 |
+| 8 | 相关技能互链 | 每技能 README「相关技能」列表含全部其他技能的 GitHub 链接，缺的自动补行；描述文案与 `sync-config.json` 逐字一致，漂移自动原位重写 |
 | 9 | ssh-mcp 配置 Junction | 六端 `<home>\ssh-mcp`（claude/dsh/codex/zcode/codebuddy 直挂 home，Qoder CN 在 `~\.qoder-cn\ssh-mcp`）Junction → 仓库 `assets\ssh-mcp`（数据源 toml 唯一真相，内网档案丢失只报告）；junction 自身 ACL 须收紧（继承的 Everyone 会令 ssh-mcp 拒启动） |
-| 10 | ssh-mcp 各端注册 | 六端统一 launcher 形态：`node <home>\ssh-mcp\launcher.js --config=<本端toml>`（Claude `.claude.json` / DSH web patch / Codex `config.toml` / ZCode `.zcode\cli\config.json` / Qoder CN `.qoder-cn\mcp.json`，2026-10-11 换端：国内版 MCP 落点为独立 mcp.json / CodeBuddy `.codebuddy\mcp.json`），注册块零密码；密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份并做对账（键须覆盖 toml 全部 profile，防新增服务器忘配密码）；旧形态/缺失 -Fix 自动迁移（备份→校验→失败回滚） |
+| 10 | ssh-mcp 各端注册 | 六端统一 launcher 形态：`node <home>\ssh-mcp\launcher.js --config=<本端toml>`（Claude `.claude.json` / DeepSeek Harness web patch / Codex `config.toml` / ZCode `.zcode\cli\config.json` / Qoder CN `.qoder-cn\mcp.json`，2026-10-11 换端：国内版 MCP 落点为独立 mcp.json / CodeBuddy `.codebuddy\mcp.json`），注册块零密码；密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份并做对账（键须覆盖 toml 全部 profile，防新增服务器忘配密码）；旧形态/缺失 -Fix 自动迁移（备份→校验→失败回滚） |
 | 11 | 通用 MCP 同步 | `sync-config.json` 的 `mcpSync.servers` 登记的 MCP（codegraph/dbx…）各端 command+args 解析级比对（node YAML / python tomllib / JSON，共享 insert 块也能识别）；支持 `perEndCommand`/`perEndArgsPrepend`/`perEndArgs` 按端覆盖（比对与修复都按生效值）；Claude 端 `.claude.json` 只读检查不自动写；缺失/漂移 -Fix 自动补齐重写；env 不跨端，带敏感值的学 ssh 用 launcher；http 型（idea）暂不支持 |
 | 12 | 防护 hooks 同步 | 源 = `~\.claude\settings.json` hooks 段；ZCode 落点 `~\.zcode\cli\config.json` 的 `hooks.events`（runner 须 `enabled: true`），经 `hooks-convert.js` 转换（丢 SessionEnd、去 MultiEdit、`--source=zcode` 改写、shell 串拆 process 型）；缺失/漂移 -Fix 幂等合并；Qoder CN（`~\.qoder-cn`，2026-10-11 换端）/CodeBuddy 落点各自 `settings.json` 的 hooks 组（与 Claude 同构，`--source=qoder`/`--source=codebuddy` 改写、排除 tokentracker）；Codex 端只报告（trusted_hash 机制不可自动改写） |
 | 13 | 规则手工副本 | 跨卷/异机制副本登记在 `rulesHardlink.manualCopies`：`coding-rules\CLAUDE.md`（F 盘进不了硬链接组）；WorkBuddy 用户级记忆 `~\.workbuddy\user-<id>-personal\MEMORY.md`（2026-10-11 接入，需专属头注释且有每会话约 4000 字符上限）：剥掉副本自身开头 `<!-- -->` 头注释后正文须与组正文一致；漂移 -Fix 自动重写（保留其头注释），副本整份丢失不自动修（要先写身份头注释） |
@@ -42,7 +42,7 @@
 
 ## 使用
 
-**对话触发（推荐）**：说「检查同步 / 七端同步 / 检查链接」（旧说法四端/五端/六端同步均指本守卫），AI 跑检查并把报告转成中文。
+**对话触发（推荐）**：说「检查同步 / 八端同步 / 检查链接」（旧说法四端/五端/六端/七端同步均指本守卫），AI 跑检查并把报告转成中文。
 
 **手动跑：**
 

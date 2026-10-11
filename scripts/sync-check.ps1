@@ -1,10 +1,12 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  agent-config-sync-check - sync guard core script (6 agent ends + skill repo)
+  agent-config-sync-check - sync guard core script (8 agent ends + skill repo)
 .DESCRIPTION
   Checks sync integrity between the skill repo (F:\idea-workspase-skills) and
-  6 agent home dirs (Claude Code / DSH / Codex / ZCode / Qoder / CodeBuddy):
+  8 agent home dirs (Claude Code / DeepSeek Harness / Codex / ZCode / Qoder CN /
+  CodeBuddy / MiniMax Code / WorkBuddy; skills junctions only on the 5
+  skillsEnabled ends):
     1. Junction skill links coverage (repo SKILL.md frontmatter = single source of truth)
     2. Dangling links pointing into the repo
     3. Global rules hardlink group (CLAUDE.md / AGENTS.md x6 incl. Qoder + CodeBuddy)
@@ -1501,14 +1503,23 @@ function Test-RelatedLinks {
         if ($next -lt 0) { $next = $text.Length }
         $sec = $text.Substring($idx, $next - $idx)
         $missing = @()
+        $drifted = @()
         foreach ($other in $Cfg.relatedSkills.PSObject.Properties.Name) {
             if ($other -eq $name) { continue }
             $repoOf = [string]$Cfg.githubRepos.$other
             if (-not $repoOf) { continue }
-            if ($sec -notlike "*huzhw/$repoOf)*") { $missing += $other }
+            if ($sec -notlike "*huzhw/$repoOf)*") {
+                $missing += $other
+            } else {
+                $wantLine = ([string]$Cfg.readme.relatedLineFormat) -f $other, $repoOf, ([string]$Cfg.relatedSkills.$other)
+                if ($sec.IndexOf($wantLine, [StringComparison]::Ordinal) -lt 0) { $drifted += $other }
+            }
         }
         if ($missing.Count -gt 0) {
             Add-Issue 'docs' 'ERROR' 'RelatedLinksMissing' "${name}:related links missing: $($missing -join ', ')" $true -LinkName $name
+        }
+        if ($drifted.Count -gt 0) {
+            Add-Issue 'docs' 'ERROR' 'RelatedLinksDescDrift' "${name}:related link desc drifted from config: $($drifted -join ', ')" $true -LinkName $name
         }
     }
 }
@@ -1614,7 +1625,6 @@ function Fix-RelatedLinks {
             $newLines += ($fmt -f $other, $repoOf, ([string]$Cfg.relatedSkills.$other))
         }
     }
-    if ($newLines.Count -eq 0) { return }
     $lines = [System.Collections.Generic.List[string]](($text -split "`r?`n"))
     $titleLine = -1
     for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -1622,10 +1632,28 @@ function Fix-RelatedLinks {
     }
     if ($titleLine -lt 0) { return }
     $lastItem = $titleLine
+    $secEnd = $lines.Count
     for ($i = $titleLine + 1; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -match '^## ') { break }
+        if ($lines[$i] -match '^## ') { $secEnd = $i; break }
         if ($lines[$i] -match '^\s*-\s*\[') { $lastItem = $i }
     }
+    # desc drift: rewrite existing link lines inside this section in place from
+    # config (config is the single source for description text, so a wording
+    # change reaches every skill README via -Fix instead of a manual sweep)
+    $replaced = 0
+    foreach ($other in ($Cfg.relatedSkills.PSObject.Properties.Name | Sort-Object)) {
+        if ($other -eq $Name) { continue }
+        $repoOf = [string]$Cfg.githubRepos.$other
+        if (-not $repoOf) { continue }
+        $wantLine = ($fmt -f $other, $repoOf, ([string]$Cfg.relatedSkills.$other))
+        for ($i = $titleLine + 1; $i -lt $secEnd; $i++) {
+            if ($lines[$i].Contains("huzhw/$repoOf)") -and $lines[$i].Trim() -ne $wantLine) {
+                $lines[$i] = $wantLine
+                $replaced++
+            }
+        }
+    }
+    if ($newLines.Count -eq 0 -and $replaced -eq 0) { return }
     $ins = $lastItem
     foreach ($nl in $newLines) {
         $ins++
@@ -1787,6 +1815,11 @@ function Apply-Fixes {
                 'RelatedLinksMissing' {
                     Fix-RelatedLinks $Cfg $iss.LinkName
                     Write-Host "  [FIXED] $($iss.LinkName): filled missing related links in README"
+                    $script:Fixed++
+                }
+                'RelatedLinksDescDrift' {
+                    Fix-RelatedLinks $Cfg $iss.LinkName
+                    Write-Host "  [FIXED] $($iss.LinkName): resynced related link descriptions from config"
                     $script:Fixed++
                 }
                 'SshJunctionMissing' {

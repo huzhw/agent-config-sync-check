@@ -7,7 +7,7 @@
 | 项 | 路径 |
 |----|------|
 | 全局路径（junction，Claude Code） | `C:\Users\Administrator\.claude\skills\{NAME}` |
-| 全局路径（junction，DSH） | `C:\Users\Administrator\.dsh\skills\{NAME}` |
+| 全局路径（junction，DeepSeek Harness） | `C:\Users\Administrator\.dsh\skills\{NAME}` |
 | 全局路径（junction，Codex） | `C:\Users\Administrator\.codex\skills\{NAME}` |
 | 全局路径（junction，ZCode） | `C:\Users\Administrator\.zcode\skills\{NAME}` |
 | 实际目录（F 仓库） | `F:\idea-workspase-skills\{NAME}` |
