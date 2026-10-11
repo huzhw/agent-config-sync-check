@@ -1,6 +1,6 @@
 # 六端防护能力对照（HOOKS 说明）
 
-> 六端工具（Claude Code / DSH / Codex / Zcode / Qoder / CodeBuddy）的防护钩子**能力对齐、实现方式各异**：
+> 六端工具（Claude Code / DSH / Codex / Zcode / Qoder CN / CodeBuddy）的防护钩子**能力对齐、实现方式各异**：
 > Claude 走 settings.json 挂 shell 脚本；DSH 走声明式规则 + 插件（无用户 hooks 机制）；Codex 走 config.toml 的 hooks 特性；Zcode 走 `~\.zcode\cli\config.json` 的 hooks 段（process 型，注册从 Claude settings.json 自动同步）；Qoder 走 `~\.qoder-cn\settings.json` 的 hooks 组（与 Claude Code 同构，注册从 Claude settings.json 自动同步；2026-10-11 国际版卸载，落点由 `~\.qoder` 换 `~\.qoder-cn`）；CodeBuddy 走 `~\.codebuddy\settings.json` 的 hooks 组（Claude Code 同构生态，注册同样自动同步）。
 > 脚本分发细节（事实源、复制关系）见 `coding-rules\SYNC说明.md` 第三节。
 >

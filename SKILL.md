@@ -1,6 +1,6 @@
 ---
 name: agent-config-sync-check
-description: 七端同步守卫：定期检查 Claude Code / DSH / Codex / ZCode / Qoder / CodeBuddy / MiniMax Code 七个工具端与自研 skill 仓库（F:\idea-workspase-skills）之间的 Junction 技能链接、全局规则硬链接组（CLAUDE.md/AGENTS.md）、仓库根 README 技能列表、ssh-mcp 配置同步、通用 MCP 与防护 hooks 注册同步是否完好，防止同步被破坏；机械性问题可自动修复；并承载新 skill 上架七步流程与 git 提交推送规范。触发词：检查同步、同步检查、配置同步、五端同步、六端同步、七端同步、四端同步、跨端同步、检查链接、链接检查、上架技能、新增技能、新加技能、sync-check、agent-config-sync-check、ssh-mcp、ssh配置同步、ssh配置。
+description: 七端同步守卫：定期检查 Claude Code / DSH / Codex / ZCode / Qoder CN / CodeBuddy / MiniMax Code 七个工具端与自研 skill 仓库（F:\idea-workspase-skills）之间的 Junction 技能链接、全局规则硬链接组（CLAUDE.md/AGENTS.md）、仓库根 README 技能列表、ssh-mcp 配置同步、通用 MCP 与防护 hooks 注册同步是否完好，防止同步被破坏；机械性问题可自动修复；并承载新 skill 上架七步流程与 git 提交推送规范。端数按机制分层：总管 7 端；规则硬链接组 6 文件（CodeBuddy 走手工副本不在组）；skills junction 5 端；ssh-mcp 6 端；hooks 注册 4 端；通用 MCP 5 端。触发词：检查同步、同步检查、配置同步、七端同步、跨端同步、检查链接、链接检查、上架技能、新增技能、新加技能、sync-check、agent-config-sync-check、ssh-mcp、ssh配置同步、ssh配置（历史说法四端/五端/六端同步均指本守卫，等同"检查同步"）。
 author: 胡志伟
 motto: "同步不怕断，怕断了没人知道——定期查，机械修，分叉留给人工。"
 ---
@@ -17,15 +17,15 @@ motto: "同步不怕断，怕断了没人知道——定期查，机械修，分
 | DSH | `~\.dsh` | `skills\`（Junction→仓库） | `AGENTS.md`（硬链接组） |
 | Codex | `~\.codex` | `skills\`（Junction→仓库） | `AGENTS.md`（硬链接组） |
 | ZCode | `~\.zcode` | `skills\`（Junction→仓库 + 中转链接） | `AGENTS.md`（硬链接组） |
-| Qoder | `~\.qoder` | `skills\`（Junction→仓库） | `AGENTS.md`（硬链接组） |
-| CodeBuddy | `~\.codebuddy` | （无独立技能目录，复用 `~\.claude\skills` 的 Junction） | `CLAUDE.md`（硬链接组） |
+| Qoder CN | `~\.qoder-cn` | `skills\`（Junction→仓库；2026-10-11 由 `~\.qoder` 换端） | `AGENTS.md`（硬链接组，随换端） |
+| CodeBuddy | `~\.codebuddy` | （无独立技能目录，复用 `~\.claude\skills` 的 Junction） | `rules\core-discipline.md`（手工副本：固定 frontmatter+组正文；官方不读裸 CLAUDE.md，2026-10-10 实证） |
 | MiniMax Code | `~\.minimax` | （不挂技能，`skillsEnabled: false`） | `AGENTS.md`（硬链接组，2026-10-10 接入） |
 
-全局规则是**一个硬链接组**（同一份文件 7 个名字：硬链接 6 份 = `.claude\CLAUDE.md` + 五处 `AGENTS.md`，含 Qoder 与 MiniMax Code；CodeBuddy 是跟随组的手工副本）。`.zcode` 里还有指向 `.claude`、`.codex\.system` 的**中转链接**。
+全局规则是**一个硬链接组**：`.claude\CLAUDE.md` + 五处 `AGENTS.md`（.codex/.dsh/.zcode/.qoder-cn/.minimax）同体 **6 文件**，改一处六处全变；CodeBuddy 官方只认带 frontmatter 的用户级规则，走 `rules\core-discipline.md` 手工副本（固定头+组正文，-Push 生成、RulesCopyDrift 看漂移）——口径即"总管七端，规则组 6 文件 + 1 副本"。`.zcode` 里还有指向 `.claude`、`.codex\.system` 的**中转链接**。
 
 ## 使用方法
 
-用户说"检查同步 / 五端同步 / 六端同步 / 七端同步 / 检查链接"等触发词时，执行检查：
+用户说"检查同步 / 七端同步 / 检查链接"等触发词时（旧说法四端/五端/六端同步均指本守卫），执行检查：
 
 ```powershell
 pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\sync-check.ps1"
@@ -51,16 +51,16 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 
 1. **技能链接覆盖**：仓库里每个含 `SKILL.md` 的目录（期望集合从 frontmatter `name` 自动推导，新增技能自动纳入）× 各启用技能端（`agents` 中 `skillsEnabled: true`，当前 5 端；CodeBuddy 端 `skillsEnabled: false`——它复用 `~\.claude\skills`，无独立技能目录），`skills\<name>` 必须存在、是 Junction、目标等于仓库规范路径
 2. **死链**：各启用端 `skills\` 下所有指向本仓库的 Junction，目标必须还存在（仓库删了技能但链接没拆 = 死链）
-3. **硬链接组**：规则文件 6 个路径都存在（含 Qoder 与 MiniMax Code）、`LinkType=HardLink`、同组（`(Get-Item).Target` 互含对方路径）、非空
+3. **硬链接组**：规则文件 6 个路径都存在（含 Qoder CN 与 MiniMax Code）、`LinkType=HardLink`、同组（`(Get-Item).Target` 互含对方路径）、非空
 4. **frontmatter 健全**：`name`、`description` 必填；`name` 全小写 kebab-case（`^[a-z0-9]+(-[a-z0-9]+)*$`）
 5. **README 技能列表**：仓库根 `README.md` 顶部区块（`<!-- sync-check:skills BEGIN/END -->` 标记）与期望技能集合一致
 6. **红线**：`coding-rules` 是独立 git 仓库、非技能，各启用端 `skills\` 下不得出现指向它的链接
 7. **JUNCTION说明.md**：每个技能目录（家族子技能除外，其说明在主目录）必须有；文档须覆盖全部启用端的 `\skills\<name>` 路径；路径上下文里的技能名不得是**陈旧名**（改名后没跟上）或**污染串**（重复前缀叠加，如 `deepseek-harness-deepseek-harness-…`，多来自粗暴的字符串替换）
 8. **README 相关技能互链**：每个技能 README（git-commit 等"仓库根 ≠ 技能目录"的按 `repoRoots` 映射定位）的「相关技能」列表必须含全部其他技能与 `coding-rules` 的 GitHub 链接，互链不断档
-9. **ssh-mcp 配置 Junction**：`~\{claude,dsh,codex,zcode,qoder,codebuddy}\ssh-mcp` 六端必须是 Junction 且指向仓库 `agent-config-sync-check\assets\ssh-mcp`（数据源 toml = 唯一真相，内网档案丢失只报告不生成）；**junction 自身 ACL 也要收紧**（继承自各端 home 的 Everyone/杂 SID 会让 ssh-mcp 拒启动，dsh 端曾中招）
-10. **ssh-mcp 各端注册（launcher 形态）**：六端注册统一为 `node <home>\ssh-mcp\launcher.js --config=<home>\ssh-mcp\ssh-mcp-config.toml`（Claude=`.claude.json` 的 `mcpServers.ssh`、DSH=web patch 的 `mcp-ssh` insert 块、Codex=`config.toml` 的 `[mcp_servers.ssh]`、ZCode=`.zcode\cli\config.json` 的 `mcp.servers.ssh`、Qoder=`.qoder\settings.json` 的 `mcpServers.ssh`、CodeBuddy=`.codebuddy\mcp.json` 的 `mcpServers.ssh`），**注册块内零密码**；ssh 密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份（launcher 运行时注入，gitignore 排除）；检查含**密码对账**（passwords.env 键必须覆盖 toml 全部 profile，缺键报错，防"新增服务器忘配密码"静默故障）；旧形态（直接 ssh-mcp + env 内联密码）报 `SshMcpLegacyRegistration`，-Fix 自动迁移
+9. **ssh-mcp 配置 Junction**：六端 `<home>\ssh-mcp`（claude/dsh/codex/zcode/codebuddy 直挂各自 home，Qoder CN 在 `~\.qoder-cn\ssh-mcp`）必须是 Junction 且指向仓库 `agent-config-sync-check\assets\ssh-mcp`（数据源 toml = 唯一真相，内网档案丢失只报告不生成）；**junction 自身 ACL 也要收紧**（继承自各端 home 的 Everyone/杂 SID 会让 ssh-mcp 拒启动，dsh 端曾中招）
+10. **ssh-mcp 各端注册（launcher 形态）**：六端注册统一为 `node <home>\ssh-mcp\launcher.js --config=<home>\ssh-mcp\ssh-mcp-config.toml`（Claude=`.claude.json` 的 `mcpServers.ssh`、DSH=web patch 的 `mcp-ssh` insert 块、Codex=`config.toml` 的 `[mcp_servers.ssh]`、ZCode=`.zcode\cli\config.json` 的 `mcp.servers.ssh`、Qoder CN=`.qoder-cn\mcp.json` 的 `mcpServers.ssh`（2026-10-11 换端：国内版 MCP 落点为独立 mcp.json，非 settings.json 内嵌）、CodeBuddy=`.codebuddy\mcp.json` 的 `mcpServers.ssh`），**注册块内零密码**；ssh 密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份（launcher 运行时注入，gitignore 排除）；检查含**密码对账**（passwords.env 键必须覆盖 toml 全部 profile，缺键报错，防"新增服务器忘配密码"静默故障）；旧形态（直接 ssh-mcp + env 内联密码）报 `SshMcpLegacyRegistration`，-Fix 自动迁移
 11. **通用 MCP 注册同步（mcpSync）**：`sync-config.json` 的 `mcpSync.servers` 登记要同步的 MCP（期望 command+args + 各端注册位置；Claude 端 `.claude.json` 为源并纳入**只读检查**（`fixable: false`，脚本不改写 CC 主状态文件），新增 MCP 照样先在 Claude 配好再抄进来）；支持**按端覆盖**：`perEndCommand`（覆盖 command）、`perEndArgsPrepend`（前置参数）、`perEndArgs`（追加参数）——比对与 -Fix 都按「全局基线 + 端覆盖」算出的生效值进行；比对是**解析级**的（node YAML / python tomllib / JSON 解析后比 command+args，不挑物理块结构——共享 insert 块里的条目也能识别）；缺失报 `McpMissing`、漂移报 `McpDrift`，-Fix 自动补齐/重写；**env 不跨端**（带敏感值的 MCP 学 ssh 用 launcher 单文件模式）；http 型 MCP（如 idea）暂不支持，不登记即不同步；chrome-devtools 已于 2026-09-20 全端卸载（浏览器统一 BrowserSkill，DSH 端用内置浏览器插件），**禁止再登记再注册**
-12. **防护 hooks 注册同步（hooksSync）**：源 = `~\.claude\settings.json` hooks 段（hooks 只手工维护这一处）；ZCode 端落点 = `~\.zcode\cli\config.json` 的 `hooks.events`（**实测 ZCode 只执行这里的 hooks，且必须 `hooks.enabled: true`**；`~\.zcode\settings.json` 不被读取，`~\.claude\settings.json` 被其 legacy 加载器列出但 `enabled` 恒 false 不执行）；转换规则在 `scripts\hooks-convert.js`：`SessionEnd` 事件丢弃（ZCode 不支持）、matcher 去掉 `MultiEdit`（ZCode 无此工具，`ApplyPatch` 走 `Write|Edit` 别名）、`rtk hook claude` 排除（Claude 生态专属）、`--source=claude` 改写 `--source=zcode`、shell 命令串拆成 `process` 型（`.sh` → `bash <绝对路径>`、`.cjs/.js` → `node <路径> <参数>`，timeout 秒→毫秒）；缺失报 `HookMissing`、漂移报 `HookDrift`、runner 没开报 `HooksRunnerDisabled`，-Fix 经 `scripts\register-zcode-hooks.js` 幂等合并（按 event+matcher 分组、args 含脚本路径=同源条目原位替换）；Codex 端只**报告**（`CodexHookMissing`，config.toml 每条 hook 带 trusted_hash，自动改写会破坏信任需手动重新接受），且排除 Codex 适配版脚本与走 notify 配置的 tokentracker；Qoder 端落点 = `~\.qoder\settings.json` 的 `hooks` 组（格式与 Claude Code 同构：SessionEnd/Stop/MultiEdit 全支持、timeout 秒制），复用 `hooks-convert.js` process 形态再拼回单条命令串（`.sh`→`bash <路径>`、`.cjs`→`node <路径>`，`--source=claude` 改 `--source=qoder`，`rtk hook claude` 排除），缺失/漂移报 `HookMissing`/`HookDrift`，-Fix 经 `scripts\register-qoder-hooks.js` 幂等 upsert（只增不删，自动备份+写后复验）
+12. **防护 hooks 注册同步（hooksSync）**：源 = `~\.claude\settings.json` hooks 段（hooks 只手工维护这一处）；ZCode 端落点 = `~\.zcode\cli\config.json` 的 `hooks.events`（**实测 ZCode 只执行这里的 hooks，且必须 `hooks.enabled: true`**；`~\.zcode\settings.json` 不被读取，`~\.claude\settings.json` 被其 legacy 加载器列出但 `enabled` 恒 false 不执行）；转换规则在 `scripts\hooks-convert.js`：`SessionEnd` 事件丢弃（ZCode 不支持）、matcher 去掉 `MultiEdit`（ZCode 无此工具，`ApplyPatch` 走 `Write|Edit` 别名）、`rtk hook claude` 排除（Claude 生态专属）、`--source=claude` 改写 `--source=zcode`、shell 命令串拆成 `process` 型（`.sh` → `bash <绝对路径>`、`.cjs/.js` → `node <路径> <参数>`，timeout 秒→毫秒）；缺失报 `HookMissing`、漂移报 `HookDrift`、runner 没开报 `HooksRunnerDisabled`，-Fix 经 `scripts\register-zcode-hooks.js` 幂等合并（按 event+matcher 分组、args 含脚本路径=同源条目原位替换）；Codex 端只**报告**（`CodexHookMissing`，config.toml 每条 hook 带 trusted_hash，自动改写会破坏信任需手动重新接受），且排除 Codex 适配版脚本与走 notify 配置的 tokentracker；Qoder 端落点 = `~\.qoder-cn\settings.json` 的 `hooks` 组（格式与 Claude Code 同构：SessionEnd/Stop/MultiEdit 全支持、timeout 秒制；2026-10-11 由 `~\.qoder` 换端），复用 `hooks-convert.js` process 形态再拼回单条命令串（`.sh`→`bash <路径>`、`.cjs`→`node <路径>`，`--source=claude` 改 `--source=qoder`，`rtk hook claude` 排除），缺失/漂移报 `HookMissing`/`HookDrift`，-Fix 经 `scripts\register-qoder-hooks.js` 幂等 upsert（只增不删，自动备份+写后复验）
 13. **规则手工副本（rulesHardlink.manualCopies）**：跨卷副本（如 `coding-rules\CLAUDE.md` 在 F 盘）无法进硬链接组，靠复制跟随组——登记进 config 后纳入检查：副本**剥掉自身开头 `<!-- ... -->` 头注释**（副本身份说明，按设计就不同）后正文须与组正文逐字一致；不一致报 `RulesCopyDrift`（-Fix 用组正文重写副本、保留其头注释），副本文件丢失报 `RulesCopyMissing`（重建需先写身份头注释，属内容决策，**不自动修**）。2026-09-05 实战：组内更新 rustup 后此副本漏同步，全靠人眼发现，故立此检查
 
 `.zcode` 的中转链接（目标不在本仓库的 Junction）：只验"中转目标还存在"，上游删了就报死链，**只报告不自动修**。
@@ -125,7 +125,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
    cmd /c "mklink /J C:\Users\Administrator\.dsh\skills\<name>    F:\idea-workspase-skills\<name>"
    cmd /c "mklink /J C:\Users\Administrator\.codex\skills\<name>  F:\idea-workspase-skills\<name>"
    cmd /c "mklink /J C:\Users\Administrator\.zcode\skills\<name>  F:\idea-workspase-skills\<name>"
-   cmd /c "mklink /J C:\Users\Administrator\.qoder\skills\<name>  F:\idea-workspase-skills\<name>"
+   cmd /c "mklink /J C:\Users\Administrator\.qoder-cn\skills\<name>  F:\idea-workspase-skills\<name>"
    ```
    （CodeBuddy 端无需建——它复用 `~\.claude\skills`，`skillsEnabled: false`）
 4. **跑上架验证**：`scripts\sync-check.ps1 -Fix` → 仓库根 README 区块自动补齐新技能 + 各启用端覆盖全绿（JUNCTION说明.md 补行按 `agents` 自动跟随端清单）
