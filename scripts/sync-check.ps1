@@ -1575,11 +1575,14 @@ function Fix-JunctionDoc {
     $tableLines = @{}; $checkLines = @{}; $rbLines = @{}
     foreach ($d in $script:Domains) {
         # NOTE: do not name this $home - HOME is a read-only automatic variable
-        $endHome = "C:\Users\Administrator\.$d"
-        if ($agents | Where-Object { $_.name -eq $d }) {
+        # home 必须读 agents 登记(2026-10-11: qoder 端 home=.qoder-cn 与名解耦后,
+        # 写死 ".$d" 让 fixer 写出的行永远对不上 checker 的 home 判据,文档永不收敛)
+        $agent = $agents | Where-Object { $_.name -eq $d }
+        if ($agent) {
+            $endHome = [string]$agent.home
             $tableLines[$d] = $tableFmt -f $script:EndLabels[$d], "$endHome\skills\$Name"
-            $checkLines[$d] = $checkFmt -f $d, $Name
-            $rbLines[$d] = $rbFmt -f $d, $Name
+            $checkLines[$d] = $checkFmt -f $endHome, $Name
+            $rbLines[$d] = $rbFmt -f $endHome, $Name
         }
     }
     $lines = [System.Collections.Generic.List[string]](($text -split "`r?`n"))
