@@ -179,6 +179,7 @@
     "deepseek-harness-plugin-doctor": "deepseek-harness-plugin-doctor",
     "deepseek-harness-settings-curator": "deepseek-harness-settings-curator",
     "reread-rules": "reread-rules-skill",
+    "dev-env-upgrade": "dev-env-upgrade",
     "coding-rules": "coding-rules"
   },
   "repoRoots": {
@@ -194,6 +195,7 @@
     "deepseek-harness-plugin-doctor": "DeepSeek Harness 插件与升级体检医生",
     "deepseek-harness-settings-curator": "DeepSeek Harness 模型配置梳理",
     "reread-rules": "重载 CLAUDE.md / AGENTS.md 规则",
+    "dev-env-upgrade": "开发环境升级医生：版本体检/最新版查询/安全升级",
     "coding-rules": "编码规则库（独立仓库，非 skill）"
   },
   "redlineDirs": ["coding-rules"]
