@@ -53,6 +53,7 @@
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "configPath": "C:/Users/Administrator/.dsh/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.dsh/ssh-mcp/launcher.js" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml", "configPath": "C:/Users/Administrator/.codex/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.codex/ssh-mcp/launcher.js" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json", "configPath": "C:/Users/Administrator/.zcode/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.zcode/ssh-mcp/launcher.js", "fixable": true },
+        "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json", "configPath": "C:/Users/Administrator/.zcode/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.zcode/ssh-mcp/launcher.js", "fixable": true },
         "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json", "configPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/launcher.js", "fixable": true },
         "codebuddy": { "type": "claude-json", "file": "C:\\Users\\Administrator\\.codebuddy\\mcp.json", "configPath": "C:/Users/Administrator/.codebuddy/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.codebuddy/ssh-mcp/launcher.js", "fixable": true }
       }
@@ -68,6 +69,7 @@
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-codegraph", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
+        "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
         "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
         "codebuddy": { "type": "codebuddy-json", "file": "C:\\Users\\Administrator\\.codebuddy\\mcp.json" }
       },
@@ -78,6 +80,7 @@
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-dbx", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
+        "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
         "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
         "codebuddy": { "type": "codebuddy-json", "file": "C:\\Users\\Administrator\\.codebuddy\\mcp.json" }
       },
@@ -88,6 +91,7 @@
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-context7", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
+        "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
         "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
         "codebuddy": { "type": "codebuddy-json", "file": "C:\\Users\\Administrator\\.codebuddy\\mcp.json" }
       }
