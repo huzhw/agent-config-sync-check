@@ -551,6 +551,35 @@ function Add-SshRegistration {
     }
 }
 
+function Add-SshProjectRegistration {
+    # Register the password-free launcher form into a project-scoped ZCode config
+    # (<repo>\.zcode\config.json -> mcp.servers.<name>). Creates the file when missing.
+    param([object]$Cfg, [string]$ProjectDir)
+    $c = (Get-SshCfg $Cfg).registration
+    $end = $c.ends.PSObject.Properties['zcodeProject'].Value
+    $file = Join-Path $ProjectDir ([string]$end.configRelativePath)
+    $dir = Split-Path -Parent $file
+    if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    if (-not (Test-Path -LiteralPath $file)) { Write-NoBomUtf8 -Path $file -Text "{}`n" }
+    $helper = Join-Path $script:ScriptDir 'register-zcode.js'
+    $out = & node $helper $file ([string]$c.serverName) ([string]$c.command) ([string]$end.launcherPath) ("--config=" + [string]$end.configPath) 2>&1
+    if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*ZCODE_REGISTER_OK*') { throw "project zcode register failed: $out" }
+}
+
+function Remove-SshUserRegistration {
+    # Drop mcp.servers.<name> from a user-level ZCode config (project scope wins now).
+    param([string]$File, [string]$Name)
+    if (-not (Test-Path -LiteralPath $File)) { return $false }
+    $json = Get-Content -LiteralPath $File -Raw -Encoding UTF8 | ConvertFrom-Json
+    $prop = $null
+    if ($json.mcp -and $json.mcp.servers) { $prop = $json.mcp.servers.PSObject.Properties[$Name] }
+    if (-not $prop) { return $false }
+    Backup-ConfigFile $File | Out-Null
+    $json.mcp.servers.PSObject.Properties.Remove($Name)
+    Write-NoBomUtf8 -Path $File -Text (($json | ConvertTo-Json -Depth 100) + "`n")
+    return $true
+}
+
 function Test-SshMcpRegistration {
     param([object]$Cfg)
     $c = Get-SshCfg $Cfg
@@ -585,7 +614,7 @@ function Test-SshMcpRegistration {
         $cfgPath = [string]$end.configPath
         $launcherPath = [string]$end.launcherPath
         $agent = "ssh-mcp/$endName"
-        if (-not (Test-Path -LiteralPath $file)) {
+        if ([string]$end.type -ne 'zcode-project-json' -and -not (Test-Path -LiteralPath $file)) {
             Add-Issue $agent 'ERROR' 'SshRegFileMissing' "registration target file missing: $file" $false
             continue
         }
@@ -694,6 +723,46 @@ function Test-SshMcpRegistration {
                     continue
                 }
                 Add-Issue $agent 'ERROR' 'SshMcpLegacyRegistration' "mcpServers.$name is not in launcher form (command=$([string]$srv.command)) - passwords must live only in ssh-passwords.env" ([bool]$end.fixable) -LinkName $endName
+            }
+            'zcode-project-json' {
+                # ZCode ssh is project-scoped: every whitelisted repo carries the
+                # launcher-form registration in <repo>\.zcode\config.json, while the
+                # user-level config.json / setting.json must stay free of it.
+                $rel = [string]$end.configRelativePath
+                foreach ($proj in @($end.projects)) {
+                    $projDir = [string]$proj
+                    $pf = Join-Path $projDir $rel
+                    if (-not (Test-Path -LiteralPath $pf)) {
+                        Add-Issue $agent 'ERROR' 'SshProjectNotRegistered' "missing project config: $pf" ([bool]$end.fixable) -LinkName ("zcodeProject|" + $projDir) -LinkPath $pf
+                        continue
+                    }
+                    $json = Get-Content -LiteralPath $pf -Raw -Encoding UTF8 | ConvertFrom-Json
+                    $srvObj = $null
+                    if ($json.mcp -and $json.mcp.servers) {
+                        $sp = $json.mcp.servers.PSObject.Properties[$name]
+                        if ($sp) { $srvObj = $sp.Value }
+                    }
+                    if (-not $srvObj) {
+                        Add-Issue $agent 'ERROR' 'SshProjectNotRegistered' "no mcp.servers.$name in $pf" ([bool]$end.fixable) -LinkName ("zcodeProject|" + $projDir) -LinkPath $pf
+                        continue
+                    }
+                    if ([string]$srvObj.command -eq $command -and @($srvObj.args | ForEach-Object { [string]$_ }) -contains $launcherPath) {
+                        $argsText = @($srvObj.args | ForEach-Object { [string]$_ }) -join ' '
+                        if ($argsText -notlike "*--config=$cfgPath*") {
+                            Add-Issue $agent 'ERROR' 'SshProjectStalePath' "mcp.servers.$name launcher args point elsewhere in $pf : $argsText" ([bool]$end.fixable) -LinkName ("zcodeProject|" + $projDir) -LinkPath $pf
+                        }
+                    } else {
+                        Add-Issue $agent 'ERROR' 'SshProjectLegacyRegistration' "mcp.servers.$name is not in launcher form in $pf (command=$([string]$srvObj.command))" ([bool]$end.fixable) -LinkName ("zcodeProject|" + $projDir) -LinkPath $pf
+                    }
+                }
+                foreach ($uf in @($end.userFiles)) {
+                    $userFile = [string]$uf
+                    if (-not (Test-Path -LiteralPath $userFile)) { continue }
+                    $uj = Get-Content -LiteralPath $userFile -Raw -Encoding UTF8 | ConvertFrom-Json
+                    if ($uj.mcp -and $uj.mcp.servers -and $uj.mcp.servers.PSObject.Properties[$name]) {
+                        Add-Issue $agent 'ERROR' 'SshUserLevelLeak' "user-level $userFile still registers mcp.servers.$name (must be project-scoped)" ([bool]$end.fixable) -LinkName ("zcodeProject|user|" + $userFile) -LinkPath $userFile
+                    }
+                }
             }
             default {
                 Add-Issue $agent 'WARN' 'SshRegUnsupported' "registration type '$($end.type)' not supported (skipped)" $false
@@ -1117,6 +1186,7 @@ function Convert-HooksForEnd {
         rewrites            = As-Arr $End.rewrite
         excludePatterns     = As-Arr $End.excludeCommandPatterns
         preferredType       = [string]$End.preferredType
+        bashCommand         = [string]$End.bashCommand
     }
     $inFile = Join-Path $script:LogDir 'hooks-convert-input.json'
     Write-NoBomUtf8 -Path $inFile -Text ($in | ConvertTo-Json -Depth 6)
@@ -1154,7 +1224,7 @@ function Test-ZcodeHooksEnd {
                     if (-not $h) { continue }
                     $a = @()
                     if ($h.PSObject.Properties['args'] -and $h.args) { $a = @($h.args | ForEach-Object { [string]$_ }) }
-                    $existing += @{ event = $evProp.Name; matcher = $m; args = $a }
+                    $existing += @{ event = $evProp.Name; matcher = $m; args = $a; command = [string]$h.command }
                 }
             }
         }
@@ -1173,6 +1243,10 @@ function Test-ZcodeHooksEnd {
         }
         if ((@($hit.args) -join "`n") -ne ($expArgs -join "`n")) {
             Add-Issue "hooks-sync/$EndName" 'ERROR' 'HookDrift' "$($e.event) [$($e.matcher)]: $(Split-Path -Leaf ([string]$e.key)) args drift (got: $($hit.args -join ' '))" ([bool]$End.fixable) -LinkName $EndName
+            continue
+        }
+        if (([string]$hit.command) -ne ([string]$e.command)) {
+            Add-Issue "hooks-sync/$EndName" 'ERROR' 'HookDrift' "$($e.event) [$($e.matcher)]: $(Split-Path -Leaf ([string]$e.key)) interpreter drift (got: $($hit.command), expected: $($e.command))" ([bool]$End.fixable) -LinkName $EndName
         }
     }
 }
@@ -1940,6 +2014,31 @@ function Apply-Fixes {
                         $out = & node $helper ([string]$endProp.Value.file) ([string]$endProp.Value.launcherPath) ([string]$endProp.Value.configPath) 2>&1
                         if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*CLAUDE_REGISTER_OK*') { throw "claude register helper failed: $out" }
                         Write-Host "  [FIXED] ssh-mcp: rewrote claude ssh registration to launcher form"
+                        $script:Fixed++
+                    }
+                }
+                'SshProjectNotRegistered' {
+                    $proj = $iss.LinkName.Split('|')[1]
+                    Add-SshProjectRegistration $Cfg $proj
+                    Write-Host "  [FIXED] ssh-mcp: registered ssh into project $proj"
+                    $script:Fixed++
+                }
+                'SshProjectLegacyRegistration' {
+                    $proj = $iss.LinkName.Split('|')[1]
+                    Add-SshProjectRegistration $Cfg $proj
+                    Write-Host "  [FIXED] ssh-mcp: rewrote project registration $proj"
+                    $script:Fixed++
+                }
+                'SshProjectStalePath' {
+                    $proj = $iss.LinkName.Split('|')[1]
+                    Add-SshProjectRegistration $Cfg $proj
+                    Write-Host "  [FIXED] ssh-mcp: rewrote project launcher args $proj"
+                    $script:Fixed++
+                }
+                'SshUserLevelLeak' {
+                    $sc = Get-SshCfg $Cfg
+                    if (Remove-SshUserRegistration -File $iss.LinkPath -Name ([string]$sc.registration.serverName)) {
+                        Write-Host "  [FIXED] ssh-mcp: removed user-level ssh from $($iss.LinkPath)"
                         $script:Fixed++
                     }
                 }

@@ -52,8 +52,25 @@
         "claude": { "type": "claude-json", "file": "C:\\Users\\Administrator\\.claude.json", "configPath": "C:/Users/Administrator/.claude/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.claude/ssh-mcp/launcher.js", "fixable": true },
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "configPath": "C:/Users/Administrator/.dsh/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.dsh/ssh-mcp/launcher.js" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml", "configPath": "C:/Users/Administrator/.codex/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.codex/ssh-mcp/launcher.js" },
-        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json", "configPath": "C:/Users/Administrator/.zcode/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.zcode/ssh-mcp/launcher.js", "fixable": true },
-        "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json", "configPath": "C:/Users/Administrator/.zcode/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.zcode/ssh-mcp/launcher.js", "fixable": true },
+        "zcodeProject": {
+          "type": "zcode-project-json",
+          "projects": [
+            "F:\\idea-workspase-amispV6\\lanxum-amisp-java",
+            "F:\\idea-workspase-amispV6\\lanxum-amisp-react",
+            "F:\\idea-workspase-zhongXin-diGaoV5\\standard_thdg_zxdm",
+            "F:\\idea-workspase-zhongXin-diGaoV5\\standard_thdg_zxdm_react",
+            "F:\\idea-workspase-aiDataInfra\\ai_data_infra",
+            "F:\\idea-workspase-aiDataInfra\\adi-web"
+          ],
+          "configRelativePath": ".zcode\\config.json",
+          "configPath": "C:/Users/Administrator/.zcode/ssh-mcp/ssh-mcp-config.toml",
+          "launcherPath": "C:/Users/Administrator/.zcode/ssh-mcp/launcher.js",
+          "userFiles": [
+            "C:\\Users\\Administrator\\.zcode\\cli\\config.json",
+            "C:\\Users\\Administrator\\.zcode\\cli\\setting.json"
+          ],
+          "fixable": true
+        },
         "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json", "configPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/launcher.js", "fixable": true },
         "codebuddy": { "type": "claude-json", "file": "C:\\Users\\Administrator\\.codebuddy\\mcp.json", "configPath": "C:/Users/Administrator/.codebuddy/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.codebuddy/ssh-mcp/launcher.js", "fixable": true }
       }
@@ -113,6 +130,7 @@
         "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json",
         "fixable": true,
         "preferredType": "process",
+        "bashCommand": "F:/Program Files (x86)/Git/usr/bin/bash.exe",
         "dropEvents": ["SessionEnd"],
         "dropToolsInMatcher": ["MultiEdit"],
         "excludeCommandPatterns": ["rtk hook claude"],

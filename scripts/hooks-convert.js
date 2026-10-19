@@ -8,7 +8,8 @@
 //   dropToolsInMatcher: [..],     // tool names removed from matcher alternations
 //   rewrites: [ {match, replace} ], // literal string rewrites applied to command
 //   excludeCommandPatterns: [..], // wildcard (* ?) patterns, matching = skip
-//   preferredType: "process"|"command"  // process = split shell strings
+//   preferredType: "process"|"command", // process = split shell strings
+//   bashCommand: "bash"                 // optional absolute bash for .sh entries
 // }
 // output: { entries: [ {event, matcher, type, command, args, timeoutMs, key} ],
 //           skipped: [ {event, command, reason} ] }
@@ -88,9 +89,12 @@ for (const e of input.entries) {
     continue;
   }
   // form 2: <path>.sh (bash script, $HOME expanded above)
+  // bashCommand lets a target end pin the interpreter (Windows apps launched
+  // from Explorer see System32\bash.exe = WSL stub, not Git Bash).
   m = flat.match(/([^\s]+\.sh)\s*$/);
   if (m) {
-    out.entries.push({ event: e.event, matcher: matcher, type: 'process', command: 'bash', args: [m[1]], timeoutMs: timeoutMs, key: m[1] });
+    const bashCmd = String(input.bashCommand || 'bash');
+    out.entries.push({ event: e.event, matcher: matcher, type: 'process', command: bashCmd, args: [m[1]], timeoutMs: timeoutMs, key: m[1] });
     continue;
   }
   // fallback: keep as a command-type entry, verbatim
