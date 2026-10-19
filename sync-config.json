@@ -83,8 +83,8 @@
       },
       {
         "name": "context7",
-        "command": "cmd",
-        "args": ["/c", "npx", "-y", "@upstash/context7-mcp"],
+        "command": "node",
+        "args": ["C:/Users/Administrator/node_global/node_modules/@upstash/context7-mcp/dist/index.js"],
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-context7", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
