@@ -202,7 +202,9 @@
     "deepseek-harness-settings-curator": "deepseek-harness-settings-curator",
     "reread-rules": "reread-rules-skill",
     "dev-env-upgrade": "dev-env-upgrade",
-    "coding-rules": "coding-rules"
+    "coding-rules": "coding-rules",
+    "prd": "prd-skill",
+    "ralph": "ralph-skill"
   },
   "repoRoots": {
     "git-commit": "F:\\idea-workspase-skills\\claude-git-commit-skill"
@@ -218,7 +220,9 @@
     "deepseek-harness-settings-curator": "DeepSeek Harness 模型配置梳理",
     "reread-rules": "重载 CLAUDE.md / AGENTS.md 规则",
     "dev-env-upgrade": "开发环境升级医生：版本体检/最新版查询/安全升级",
-    "coding-rules": "编码规则库（独立仓库，非 skill）"
+    "coding-rules": "编码规则库（独立仓库，非 skill）",
+    "prd": "PRD 生成器（一句话需求→结构化需求文档）",
+    "ralph": "PRD 转 prd.json（Ralph 自主执行格式）"
   },
   "redlineDirs": ["coding-rules"]
 }
