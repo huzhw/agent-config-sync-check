@@ -1324,7 +1324,12 @@ function Get-QoderHookEntries {
     $out = @()
     foreach ($e in @($conv.Obj.entries)) {
         if ([string]$e.type -eq 'process') {
-            $parts = @([string]$e.command)
+            $cmd0 = [string]$e.command
+            # command-string ends run through a shell: a bare interpreter path
+            # containing spaces must stay quoted or the shell splits it
+            # (Git install moved to "F:\Program Files (x86)\Git", 2026-10-20)
+            if ($cmd0 -match '\s' -and $cmd0 -notmatch '^"') { $cmd0 = '"' + $cmd0 + '"' }
+            $parts = @($cmd0)
             foreach ($a in @($e.args)) { $parts += ('"' + ([string]$a) + '"') }
             $cmd = $parts -join ' '
         } else {
