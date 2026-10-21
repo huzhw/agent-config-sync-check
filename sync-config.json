@@ -1,6 +1,6 @@
 {
   "repo": "F:\\idea-workspase-skills",
-  "excludeDirs": [".idea", "scripts", ".system", "logs", ".zcode", ".dsh", ".claude", ".codex", ".qoder-cn", "daily-report-panel"],
+  "excludeDirs": [".idea", "scripts", ".system", "logs", ".zcode", ".dsh", ".claude", ".codex", ".qoder-cn", "daily-report-panel", "node_modules"],
   "agents": [
     { "name": "claude", "label": "Claude Code", "home": "C:\\Users\\Administrator\\.claude", "rulesFile": "CLAUDE.md", "skillsEnabled": true },
     { "name": "dsh",    "label": "DeepSeek Harness", "home": "C:\\Users\\Administrator\\.dsh",    "rulesFile": "AGENTS.md", "skillsEnabled": true },

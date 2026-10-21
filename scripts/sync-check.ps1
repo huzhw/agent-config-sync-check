@@ -5,11 +5,14 @@
 .DESCRIPTION
   Checks sync integrity between the skill repo (F:\idea-workspase-skills) and
   8 agent home dirs (Claude Code / DeepSeek Harness / Codex / ZCode / Qoder CN /
-  CodeBuddy / MiniMax Code / WorkBuddy; skills junctions only on the 5
-  skillsEnabled ends):
+  MiniMax Code / OpenCode / WorkBuddy; skills junctions only on the 5 skillsEnabled
+  ends; OpenCode 2026-10-21 joined rules-only - it finds ~/.claude/skills by itself,
+  and reads MCP from its own opencode.json "mcp" block, so no junction/no MCP sync);
+  CodeBuddy was an end 2026-10-10..2026-10-21, retired when CodeBuddy CN was
+  uninstalled (codebuddy-json / codebuddy-json-hooks handlers stay as generic types):
     1. Junction skill links coverage (repo SKILL.md frontmatter = single source of truth)
     2. Dangling links pointing into the repo
-    3. Global rules hardlink group (CLAUDE.md / AGENTS.md x6 incl. Qoder + CodeBuddy)
+    3. Global rules hardlink group (CLAUDE.md x1 + AGENTS.md x6 = 7 files, incl. Qoder CN / MiniMax / OpenCode)
     4. SKILL.md frontmatter sanity (name/description, kebab-case)
     5. Repo root README skill-list section (BEGIN/END marks, auto-maintained)
     6. Redline dirs (coding-rules must never be linked)
@@ -271,6 +274,15 @@ function Get-RulesGroupSource {
     return $null
 }
 
+function Test-IsRepoSideCopy {
+    # A manualCopies entry that lives in the skill repo (F:) is the rule SOURCE,
+    # not a mirror of the C: group body. "Fixing" it would overwrite the git
+    # source with the group body = the opposite direction of sync-rules.ps1
+    # -Push, silently reverting un-pushed rule edits. Report only.
+    param([string]$Path)
+    return ($Path -like 'F:\idea-workspase-skills\*')
+}
+
 function Test-RulesManualCopy {
     param([object]$Cfg)
     $rh = $Cfg.rulesHardlink
@@ -293,7 +305,12 @@ function Test-RulesManualCopy {
         }
         $cpText = Get-RulesCoreText -Path $cp -StripHeaderComment $strip
         if ($cpText -ne $srcText) {
-            Add-Issue 'rules' 'ERROR' 'RulesCopyDrift' "$cp body differs from the rules group body (group source: $src); -Fix resyncs the copy while keeping its own header comment" $true -LinkPath $cp -ExpectedDir $src
+            if (Test-IsRepoSideCopy $cp) {
+                # source side: never write back. Cure = commit F: source, then -Push.
+                Add-Issue 'rules' 'ERROR' 'RulesCopyDrift' "$cp (repo source) body differs from the rules group body (group source: $src); NOT auto-fixable by design - commit the repo source, then run sync-rules.ps1 -Push" $false -LinkPath $cp -ExpectedDir $src
+            } else {
+                Add-Issue 'rules' 'ERROR' 'RulesCopyDrift' "$cp body differs from the rules group body (group source: $src); -Fix resyncs the copy while keeping its own header comment" $true -LinkPath $cp -ExpectedDir $src
+            }
         }
     }
 }
@@ -303,6 +320,11 @@ function Fix-RulesCopy {
     # leading YAML frontmatter (if any) AND its <!-- ... --> header comment
     # (identity doc, differs by design)
     param([object]$Cfg, [string]$CopyPath)
+    if (Test-IsRepoSideCopy $CopyPath) {
+        # hard guard: the repo source is never a mirror (see Test-IsRepoSideCopy)
+        Write-Host "  [SKIP] rules: $CopyPath lives in the repo (source side), refusing to overwrite it from the C: group"
+        return $false
+    }
     $src = Get-RulesGroupSource $Cfg
     if (-not $src) { return $false }
     $srcText = Get-RulesCoreText -Path $src -StripHeaderComment $true
@@ -1237,6 +1259,14 @@ function Test-ZcodeHooksEnd {
         $hit = $existing | Where-Object {
             $_.event -eq $e.event -and (($_.matcher + '') -eq ([string]$e.matcher)) -and (@($_.args) -contains [string]$e.key)
         } | Select-Object -First 1
+        # command 型条目没有 args（整串命令就是载荷），身份只能按 command 全串精确相等认，
+        # 否则永远判缺失 —— 每次 -Fix 都会再追加一条重复条目且写后自校验失败。
+        if (-not $hit -and ([string]$e.type -eq 'command')) {
+            $hit = $existing | Where-Object {
+                $_.event -eq $e.event -and (($_.matcher + '') -eq ([string]$e.matcher)) -and
+                (@($_.args).Count -eq 0) -and (([string]$_.command) -eq ([string]$e.command))
+            } | Select-Object -First 1
+        }
         if (-not $hit) {
             Add-Issue "hooks-sync/$EndName" 'ERROR' 'HookMissing' "$($e.event) [$($e.matcher)]: $(Split-Path -Leaf ([string]$e.key)) not registered in $(Split-Path -Leaf $file)" ([bool]$End.fixable) -LinkName $EndName
             continue
