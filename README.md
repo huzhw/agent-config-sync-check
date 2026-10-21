@@ -84,9 +84,13 @@ agent-config-sync-check/
     ├── sync-check.ps1    ← 检查/修复核心脚本（PS 5.1 兼容，源码纯 ASCII 零密码）
     ├── ssh-claude-register.js← -Fix 专用：Claude 端 ssh 注册重写为 launcher 形态
     ├── register-zcode.js     ← -Fix 专用：ZCode 端 mcp.servers 注册写入（客户端 config.json 与 CLI setting.json 通用；整文件重写，键序按插入序保留，只动目标子树）
-    ├── register-codebuddy.js ← -Fix 专用：`codebuddy-json` 形态 mcpServers 注册写入（通用类型处理器：CodeBuddy 端 2026-10-21 卸载后已无端使用，保留；备份+复验）
-    └── register-codebuddy-hooks.js ← -Fix 专用：`codebuddy-json-hooks` 形态 hooks 幂等合并（通用类型处理器，同上保留；备份+复验）
+    ├── register-zcode-hooks.js ← -Fix 专用：ZCode `hooks` 段幂等合并（process 型数组参数、备份+复验）
+    ├── register-qoder.js     ← -Fix 专用：Qoder 端 mcpServers 注册写入（Claude 同构，备份+复验）
+    ├── hooks-convert.js      ← -Fix 专用：Claude settings.json 钩子 → 各端形态转换
+    └── register-qoder-hooks.js ← -Fix 专用：Qoder hooks 幂等合并（按脚本路径原位替换、清重复条目、备份+复验）
 ```
+
+> CodeBuddy 端 2026-10-21 随 CodeBuddy CN 卸载退出，它的两个辅助脚本（`register-codebuddy.js` / `register-codebuddy-hooks.js`）与 `sync-check.ps1` 里对应的 5 处 `codebuddy-json` / `codebuddy-json-hooks` 分支同日一并删除，不留复活路径。
 
 ## 每日定时（可选）
 

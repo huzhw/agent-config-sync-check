@@ -9,7 +9,9 @@
   ends; OpenCode 2026-10-21 joined rules-only - it finds ~/.claude/skills by itself,
   and reads MCP from its own opencode.json "mcp" block, so no junction/no MCP sync);
   CodeBuddy was an end 2026-10-10..2026-10-21, retired when CodeBuddy CN was
-  uninstalled (codebuddy-json / codebuddy-json-hooks handlers stay as generic types):
+  uninstalled and its data/install dirs deleted; the codebuddy-json /
+  codebuddy-json-hooks handler branches plus the two register-codebuddy*.js
+  helpers were removed on 2026-10-21 (no dead paths left for a resurrected end):
     1. Junction skill links coverage (repo SKILL.md frontmatter = single source of truth)
     2. Dangling links pointing into the repo
     3. Global rules hardlink group (CLAUDE.md x1 + AGENTS.md x6 = 7 files, incl. Qoder CN / MiniMax / OpenCode)
@@ -898,11 +900,6 @@ function Get-McpParsedEnd {
         $out = & node $assets[3] $File 2>&1
         if ($LASTEXITCODE -ne 0) { throw "qoder config parse failed: $out" }
         return ($out | ConvertFrom-Json)
-    } elseif ($Type -eq 'codebuddy-json') {
-        # CodeBuddy mcp.json uses the same top-level mcpServers shape as Claude.
-        $out = & node $assets[3] $File 2>&1
-        if ($LASTEXITCODE -ne 0) { throw "codebuddy config parse failed: $out" }
-        return ($out | ConvertFrom-Json)
     } else {
         $out = & ($script:McpPyPath) $assets[1] $File 2>&1
         if ($LASTEXITCODE -ne 0) { throw "codex toml parse failed: $out" }
@@ -1055,7 +1052,7 @@ function Test-McpSync {
             } else {
                 $e = $parsed[$key].PSObject.Properties[$name]
                 if (-not $e) {
-                    $where = if ([string]$end.type -eq 'zcode-json') { "no mcp.servers.$name in $($end.file)" } elseif ([string]$end.type -eq 'claude-json' -or [string]$end.type -eq 'qoder-json' -or [string]$end.type -eq 'codebuddy-json') { "no mcpServers.$name in $($end.file)" } else { "no [mcp_servers.$name] section in $($end.file)" }
+                    $where = if ([string]$end.type -eq 'zcode-json') { "no mcp.servers.$name in $($end.file)" } elseif ([string]$end.type -eq 'claude-json' -or [string]$end.type -eq 'qoder-json') { "no mcpServers.$name in $($end.file)" } else { "no [mcp_servers.$name] section in $($end.file)" }
                     Add-Issue $agent 'ERROR' 'McpMissing' $where $fixable -LinkName $link
                     continue
                 }
@@ -1118,14 +1115,6 @@ function Add-McpRegistration {
             $out = & node $helper $file ([string]$srv.name) $command @argStrs 2>&1
             if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*QODER_REGISTER_OK*') { throw "qoder register failed: $out" }
             $parsed = Get-McpParsedEnd 'qoder-json' $file
-            $e = $parsed.PSObject.Properties[[string]$srv.name]
-            if (-not $e) { throw "post-append verify failed: entry not found" }
-        } elseif ([string]$end.type -eq 'codebuddy-json') {
-            $helper = Join-Path $script:ScriptDir 'register-codebuddy.js'
-            $argStrs = @($argList | ForEach-Object { [string]$_ })
-            $out = & node $helper $file ([string]$srv.name) $command @argStrs 2>&1
-            if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*CODEBUDDY_REGISTER_OK*') { throw "codebuddy register failed: $out" }
-            $parsed = Get-McpParsedEnd 'codebuddy-json' $file
             $e = $parsed.PSObject.Properties[[string]$srv.name]
             if (-not $e) { throw "post-append verify failed: entry not found" }
         } else {
@@ -1318,12 +1307,6 @@ function Test-HooksSync {
                 $exp = Get-QoderHookEntries -Cfg $c -End $end -Flat $flat -EndName $endName
                 if ($null -ne $exp) { Test-QoderHooksEnd -EndName $endName -End $end -Expected $exp }
             }
-            'codebuddy-json-hooks' {
-                # CodeBuddy settings.json hooks are Claude-Code-shaped command
-                # strings; the conversion/compare pipeline is shared with Qoder.
-                $exp = Get-QoderHookEntries -Cfg $c -End $end -Flat $flat -EndName $endName
-                if ($null -ne $exp) { Test-QoderHooksEnd -EndName $endName -End $end -Expected $exp }
-            }
         }
     }
 }
@@ -1418,22 +1401,6 @@ function Invoke-QoderHooksFix {
     Write-NoBomUtf8 -Path $specFile -Text (@{ entries = $entries } | ConvertTo-Json -Depth 6)
     $out = & node (Join-Path $script:ScriptDir 'register-qoder-hooks.js') ([string]$end.file) $specFile 2>&1
     if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*QODER_HOOKS_OK*') { throw "qoder hooks register failed: $out" }
-}
-
-function Invoke-CodebuddyHooksFix {
-    # CodeBuddy settings.json hooks use the Claude-Code shape and the same
-    # spec format as the Qoder writer; only the helper and marker differ.
-    param([object]$Cfg, [string]$EndName)
-    $c = Get-HooksSyncCfg $Cfg
-    $end = $c.ends.PSObject.Properties[$EndName].Value
-    $flat = Get-FlattenedSourceHooks $c
-    if ($null -eq $flat) { throw "hooks source unavailable" }
-    $entries = Get-QoderHookEntries -Cfg $c -End $end -Flat $flat -EndName $EndName
-    if ($null -eq $entries) { throw "hook conversion failed" }
-    $specFile = Join-Path $script:LogDir 'hooks-spec-codebuddy.json'
-    Write-NoBomUtf8 -Path $specFile -Text (@{ entries = $entries } | ConvertTo-Json -Depth 6)
-    $out = & node (Join-Path $script:ScriptDir 'register-codebuddy-hooks.js') ([string]$end.file) $specFile 2>&1
-    if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*CODEBUDDY_HOOKS_OK*') { throw "codebuddy hooks register failed: $out" }
 }
 
 # ---------- check 5: repo root README skill-list section ----------
@@ -1998,9 +1965,6 @@ function Apply-Fixes {
                     if ([string]$hEnd.type -eq 'qoder-json-hooks') {
                         Invoke-QoderHooksFix $Cfg $iss.LinkName
                         Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): merged missing hooks into Qoder settings"
-                    } elseif ([string]$hEnd.type -eq 'codebuddy-json-hooks') {
-                        Invoke-CodebuddyHooksFix $Cfg $iss.LinkName
-                        Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): merged missing hooks into CodeBuddy settings"
                     } else {
                         Invoke-ZcodeHooksFix $Cfg $iss.LinkName
                         Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): merged missing hooks into ZCode config"
@@ -2012,9 +1976,6 @@ function Apply-Fixes {
                     if ([string]$hEnd.type -eq 'qoder-json-hooks') {
                         Invoke-QoderHooksFix $Cfg $iss.LinkName
                         Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): rewrote drifted hooks in Qoder settings"
-                    } elseif ([string]$hEnd.type -eq 'codebuddy-json-hooks') {
-                        Invoke-CodebuddyHooksFix $Cfg $iss.LinkName
-                        Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): rewrote drifted hooks in CodeBuddy settings"
                     } else {
                         Invoke-ZcodeHooksFix $Cfg $iss.LinkName
                         Write-Host "  [FIXED] hooks-sync/$($iss.LinkName): rewrote drifted hooks in ZCode config"

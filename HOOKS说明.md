@@ -7,7 +7,7 @@
 >
 > **Qoder 已接入 hooksSync**：落点 `~\.qoder-cn\settings.json` 的 `hooks` 组（SessionEnd/Stop/MultiEdit 全支持、timeout 秒制；2026-10-11 起，旧 `~\.qoder` 为国际版遗留不再注册），复用 `hooks-convert.js` 转换（`--source=qoder` 改写、排除 tokentracker/notify.cjs），-Fix 经 `register-qoder-hooks.js` 幂等 upsert（按脚本路径原位替换、清理同脚本历史重复条目，自动备份+写后复验；用户自加 hooks 不动）。
 >
-> **CodeBuddy 端已随 CodeBuddy CN 卸载退出 hooksSync（2026-10-10 接入 → 2026-10-21 退出）**：当年落点 `~\.codebuddy\settings.json` 的 `hooks` 组（Claude Code 同构），复用 Qoder 的转换管线（process 型、去 MultiEdit、`--source=codebuddy` 改写、排除 tokentracker/notify.cjs——它有自带的 `--source=codebuddy` 采集注册），-Fix 经 `register-codebuddy-hooks.js` 幂等 upsert（按脚本路径原位替换、清理同脚本历史重复条目，自动备份+写后复验；用户自加 hooks 不动）。该脚本与 `codebuddy-json-hooks` 处理器保留为通用类型，当前无端使用。
+> **CodeBuddy 端已随 CodeBuddy CN 卸载退出 hooksSync（2026-10-10 接入 → 2026-10-21 退出）**：当年落点 `~\.codebuddy\settings.json` 的 `hooks` 组（Claude Code 同构），复用 Qoder 的转换管线（process 型、去 MultiEdit、`--source=codebuddy` 改写、排除 tokentracker/notify.cjs——它有自带的 `--source=codebuddy` 采集注册），-Fix 经 `register-codebuddy-hooks.js` 幂等 upsert（按脚本路径原位替换、清理同脚本历史重复条目，自动备份+写后复验；用户自加 hooks 不动）。该脚本与 `codebuddy-json-hooks` 处理器分支已于 2026-10-21 一并删除，不留复活路径。
 
 ## 能力对照表
 
@@ -58,7 +58,7 @@
 
 1. 用户环境变量 `CLAUDE_CODE_GIT_BASH_PATH=F:\Program Files (x86)\Git\bin\bash.exe`（Claude Code 新会话生效；`claude.exe` 内置认这个变量名）
 2. `sync-config.json` → `hooksSync.ends.qoder` / `ends.codebuddy` 补 `bashCommand: "F:/Program Files (x86)/Git/usr/bin/bash.exe"`；`scripts\sync-check.ps1` 的 `Get-QoderHookEntries` 对**含空格的解释器路径自动加双引号**（命令串端会经 shell 解析，不引号就被空格劈开；`ends.codebuddy` 已于 2026-10-21 随 CodeBuddy CN 卸载移除）
-3. `scripts\register-qoder-hooks.js` 改为按**脚本路径**（命令末尾 `"...xxx.sh"`）原位替换：旧的 `bash "..."` 被替换成固定解释器，并清理同脚本的历史重复条目，不再追加第二份（CodeBuddy 那份 `register-codebuddy-hooks.js` 已于 2026-10-21 随该端退出，当前无端使用）
+3. `scripts\register-qoder-hooks.js` 改为按**脚本路径**（命令末尾 `"...xxx.sh"`）原位替换：旧的 `bash "..."` 被替换成固定解释器，并清理同脚本的历史重复条目，不再追加第二份（CodeBuddy 那份 `register-codebuddy-hooks.js` 已于 2026-10-21 随该端退出、文件删除）
 4. 2026-10-20 环境层兜底：用户 PATH 最前插 `F:\Program Files (x86)\Git\bin`（`WM_SETTINGCHANGE` 已广播，新开进程裸 `bash` 即命中 Git Bash；原 PATH 备份 `~\.claude\backups\20261020-git-path\user-path.bak.txt`）。同时把 4 个用 codegraph 的仓库共 16 条 git hook 里 `NODE="/f/nodejs/node.exe"`（nvm 符号链接）钉成绝对版本路径 `"/f/nvm/v22.20.0/node.exe"`（备份 `~\.claude\backups\20261020-codegraph-hooks\`）；codegraph 重装重新生成 hooks 后要再钉一次
 5. 顺带清理死配置（2026-10-20）：备份后删除 `~\.qoder\settings.json`（国际版 Qoder 已卸载，内含插件/MCP 配置）与 `~\.zcode\settings.json`（ZCode 不读它，真源是 `~\.zcode\cli\config.json`），备份在 `~\.claude\backups\20261020-dead-configs\`
 
