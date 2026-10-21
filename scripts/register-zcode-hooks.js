@@ -16,6 +16,17 @@ const spec = JSON.parse(fs.readFileSync(specFile, 'utf8'));
 // PS 5.1 ConvertTo-Json unfolds single-element arrays into bare objects
 if (!Array.isArray(spec.entries)) spec.entries = spec.entries ? [spec.entries] : [];
 spec.entries = spec.entries.filter(function (e) { return e && e.event && e.command; });
+// Identity key of an entry already present in config.json: a process entry is
+// recognised by the script path inside its args; a command entry carries no args
+// (the verbatim shell string is the payload), so its identity is the full command
+// text. Without this fallback a command-form entry can never be matched: every
+// run appends another duplicate and the post-write verification fails forever.
+function sameHook(h, ent) {
+  if (ent.type === 'command') {
+    return (!Array.isArray(h.args) || h.args.length === 0) && String(h.command) === String(ent.command);
+  }
+  return Array.isArray(h.args) && !!ent.key && h.args.indexOf(ent.key) >= 0;
+}
 const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
 fs.copyFileSync(file, file + '.bak-hooks-' + stamp);
 let d;
@@ -41,9 +52,7 @@ for (const ent of spec.entries || []) {
   const form = { type: ent.type, command: ent.command };
   if (ent.type === 'process') form.args = ent.args || [];
   if (ent.timeoutMs != null) form.timeoutMs = ent.timeoutMs;
-  const idx = group.hooks.findIndex(function (h) {
-    return Array.isArray(h.args) && ent.key && h.args.indexOf(ent.key) >= 0;
-  });
+  const idx = group.hooks.findIndex(function (h) { return sameHook(h, ent); });
   if (idx >= 0) group.hooks[idx] = form;
   else group.hooks.push(form);
 }
@@ -55,9 +64,7 @@ for (const ent of spec.entries || []) {
   if (!ok) break;
   const groups = (v.hooks.events[ent.event] || []);
   const g = groups.find(function (x) { return (x.matcher || null) === (ent.matcher || null); });
-  const hit = g && g.hooks.find(function (h) {
-    return Array.isArray(h.args) && ent.key && h.args.indexOf(ent.key) >= 0;
-  });
+  const hit = g && g.hooks.find(function (h) { return sameHook(h, ent); });
   if (!hit) ok = false;
 }
 if (!ok) {

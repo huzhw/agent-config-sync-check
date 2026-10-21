@@ -78,20 +78,29 @@ for (const e of input.entries) {
   }
 
   // strip quotes and expand $HOME so paths become plain tokens
-  const flat = c.replace(/"\$HOME"\/?/g, HOME + '/').replace(/"/g, '');
+  const flat = c.replace(/["']\$HOME["']\/?/g, HOME + '/').replace(/"/g, '');
+  // PowerShell sources quote every argument with single quotes
+  // (`& 'C:\...\node.exe' 'x.cjs'`), so token matching also drops them; the
+  // verbatim `flat` text is kept for the command-form fallback.
+  const tokens = flat.replace(/'/g, '');
 
-  // form 1: [env] node <path>.cjs|.js [rest...]
-  let m = flat.match(/(?:^|\s)node\s+([^\s]+\.(?:cjs|js))\s*(.*)$/i);
+  // form 1: [&] [env] node[.exe] <path>.cjs|.js [rest...]
+  // The head token must BE the interpreter (anchored at ^, outer/leading path
+  // allowed): PowerShell sources write `& 'C:\...\node.exe' 'x.cjs' --flag`,
+  // while a piped `... | node.exe x.js` must stay verbatim - the process form
+  // would silently drop the pipeline.
+  const head = tokens.replace(/^\s*&\s*/, '');
+  let m = head.match(/^(?:env\s+)?(?:\S*[\\/])?node(?:\.exe)?\s+([^\s]+\.(?:cjs|js))(?:\s+(.*))?$/i);
   if (m) {
     const args = [m[1]];
-    m[2].split(/\s+/).forEach(function (t) { if (t) args.push(t); });
+    (m[2] || '').split(/\s+/).forEach(function (t) { if (t) args.push(t); });
     out.entries.push({ event: e.event, matcher: matcher, type: 'process', command: 'node', args: args, timeoutMs: timeoutMs, key: m[1] });
     continue;
   }
   // form 2: <path>.sh (bash script, $HOME expanded above)
   // bashCommand lets a target end pin the interpreter (Windows apps launched
   // from Explorer see System32\bash.exe = WSL stub, not Git Bash).
-  m = flat.match(/([^\s]+\.sh)\s*$/);
+  m = tokens.match(/([^\s]+\.sh)\s*$/);
   if (m) {
     const bashCmd = String(input.bashCommand || 'bash');
     out.entries.push({ event: e.event, matcher: matcher, type: 'process', command: bashCmd, args: [m[1]], timeoutMs: timeoutMs, key: m[1] });
