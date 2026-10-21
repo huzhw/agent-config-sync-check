@@ -1,14 +1,14 @@
 {
   "repo": "F:\\idea-workspase-skills",
-  "excludeDirs": [".idea", "scripts", ".system", "logs"],
+  "excludeDirs": [".idea", "scripts", ".system", "logs", ".zcode", ".dsh", ".claude", ".codex", ".qoder-cn", "daily-report-panel"],
   "agents": [
     { "name": "claude", "label": "Claude Code", "home": "C:\\Users\\Administrator\\.claude", "rulesFile": "CLAUDE.md", "skillsEnabled": true },
     { "name": "dsh",    "label": "DeepSeek Harness", "home": "C:\\Users\\Administrator\\.dsh",    "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "codex",  "label": "Codex",       "home": "C:\\Users\\Administrator\\.codex",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "zcode",  "label": "Zcode",       "home": "C:\\Users\\Administrator\\.zcode",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
     { "name": "qoder",  "label": "Qoder CN",    "home": "C:\\Users\\Administrator\\.qoder-cn",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
-    { "name": "codebuddy", "label": "CodeBuddy", "home": "C:\\Users\\Administrator\\.codebuddy", "skillsEnabled": false },
     { "name": "minimax", "label": "MiniMax Code", "home": "C:\\Users\\Administrator\\.minimax", "rulesFile": "AGENTS.md", "skillsEnabled": false },
+    { "name": "opencode", "label": "OpenCode", "home": "C:\\Users\\Administrator\\.config\\opencode", "rulesFile": "AGENTS.md", "skillsEnabled": false },
     { "name": "workbuddy", "label": "WorkBuddy", "home": "C:\\Users\\Administrator\\.workbuddy", "skillsEnabled": false }
   ],
   "rulesHardlink": {
@@ -19,15 +19,12 @@
       "C:\\Users\\Administrator\\.codex\\AGENTS.md",
       "C:\\Users\\Administrator\\.zcode\\AGENTS.md",
       "C:\\Users\\Administrator\\.qoder-cn\\AGENTS.md",
-      "C:\\Users\\Administrator\\.minimax\\AGENTS.md"
+      "C:\\Users\\Administrator\\.minimax\\AGENTS.md",
+      "C:\\Users\\Administrator\\.config\\opencode\\AGENTS.md"
     ],
     "manualCopies": [
       {
         "path": "F:\\idea-workspase-skills\\coding-rules\\CLAUDE.md",
-        "stripHeaderComment": true
-      },
-      {
-        "path": "C:\\Users\\Administrator\\.codebuddy\\rules\\core-discipline.md",
         "stripHeaderComment": true
       },
       {
@@ -40,7 +37,7 @@
     "enabled": true,
     "sourceDir": "F:\\idea-workspase-skills\\agent-config-sync-check\\assets\\ssh-mcp",
     "configFileName": "ssh-mcp-config.toml",
-    "junctionEnds": ["claude", "dsh", "codex", "zcode", "qoder", "codebuddy"],
+    "junctionEnds": ["claude", "dsh", "codex", "zcode", "qoder"],
     "registration": {
       "serverName": "ssh",
       "command": "node",
@@ -71,8 +68,7 @@
           ],
           "fixable": true
         },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json", "configPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/launcher.js", "fixable": true },
-        "codebuddy": { "type": "claude-json", "file": "C:\\Users\\Administrator\\.codebuddy\\mcp.json", "configPath": "C:/Users/Administrator/.codebuddy/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.codebuddy/ssh-mcp/launcher.js", "fixable": true }
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json", "configPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/launcher.js", "fixable": true }
       }
     }
   },
@@ -87,8 +83,7 @@
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
         "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
-        "codebuddy": { "type": "codebuddy-json", "file": "C:\\Users\\Administrator\\.codebuddy\\mcp.json" }
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" }
       },
       {
         "name": "dbx",
@@ -98,8 +93,7 @@
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
         "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
-        "codebuddy": { "type": "codebuddy-json", "file": "C:\\Users\\Administrator\\.codebuddy\\mcp.json" }
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" }
       },
       {
         "name": "context7",
@@ -109,8 +103,7 @@
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
         "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
-        "codebuddy": { "type": "codebuddy-json", "file": "C:\\Users\\Administrator\\.codebuddy\\mcp.json" }
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" }
       }
     ],
     "pythonPath": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
@@ -158,20 +151,6 @@
         "excludeCommandPatterns": ["rtk hook claude", "notify.cjs"],
         "rewrite": [
           { "match": "--source=claude", "replace": "--source=qoder" }
-        ]
-      },
-      "codebuddy": {
-        "enabled": true,
-        "type": "codebuddy-json-hooks",
-        "file": "C:\\Users\\Administrator\\.codebuddy\\settings.json",
-        "fixable": true,
-        "preferredType": "process",
-        "bashCommand": "F:/Program Files (x86)/Git/usr/bin/bash.exe",
-        "dropEvents": [],
-        "dropToolsInMatcher": ["MultiEdit"],
-        "excludeCommandPatterns": ["rtk hook claude", "notify.cjs"],
-        "rewrite": [
-          { "match": "--source=claude", "replace": "--source=codebuddy" }
         ]
       }
     }

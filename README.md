@@ -1,6 +1,6 @@
 # agent-config-sync-check — 八端同步守卫
 
-定期检查 Claude Code / DeepSeek Harness / Codex / ZCode / Qoder CN / CodeBuddy / MiniMax Code / WorkBuddy 八个工具端（WorkBuddy 2026-10-11 以部分端接入：仅规则手工副本）与自研 skill 仓库（`F:\idea-workspase-skills`）之间的同步完整性：Junction 技能链接、全局规则硬链接组、README 技能列表、ssh-mcp 配置同步——防止同步被破坏了没人知道。
+定期检查 Claude Code / DeepSeek Harness / Codex / ZCode / Qoder CN / MiniMax Code / OpenCode / WorkBuddy 八个工具端（WorkBuddy 2026-10-11 以部分端接入：仅规则手工副本；OpenCode 2026-10-21 接入，仅规则硬链接组；CodeBuddy 2026-10-10 接入、2026-10-21 随 CodeBuddy CN 卸载退出，端数由八回落七、再由 OpenCode 补回八）与自研 skill 仓库（`F:\idea-workspase-skills`）之间的同步完整性：Junction 技能链接、全局规则硬链接组、README 技能列表、ssh-mcp 配置同步——防止同步被破坏了没人知道。
 
 ## 相关技能
 
@@ -21,24 +21,24 @@
 
 ## 解决了什么问题
 
-**多端 Junction 架构下（当前 8 端，MiniMax Code 仅接规则硬链接组、WorkBuddy 仅接规则手工副本，均不挂技能），同步坏了没有任何报警。** 技能目录删了链接悬空、新增 skill 忘挂某端、规则文件被编辑器"另存"成独立副本（硬链接组断裂，改一端其他三端不跟）、README 技能列表过期——这些全是静默故障，等到用的时候才发现技能不见了。这个技能把各端状态一遍扫完，机械性问题自动修，分叉问题报给人。
+**多端 Junction 架构下（当前 8 端，MiniMax Code 仅接规则硬链接组、OpenCode 仅接规则硬链接组、WorkBuddy 仅接规则手工副本，均不挂技能），同步坏了没有任何报警。** 技能目录删了链接悬空、新增 skill 忘挂某端、规则文件被编辑器"另存"成独立副本（硬链接组断裂，改一端其他三端不跟）、README 技能列表过期——这些全是静默故障，等到用的时候才发现技能不见了。这个技能把各端状态一遍扫完，机械性问题自动修，分叉问题报给人。
 
 ## 检查项（13 条）
 
 | # | 检查项 | 内容 |
 |---|--------|------|
-| 1 | 链接覆盖 | 仓库每个含 `SKILL.md` 的目录（frontmatter `name` 自动推导）× 各启用端（`agents` 的 `skillsEnabled`，当前 5 端；CodeBuddy 复用 `.claude\skills`，无独立技能目录不单列），`skills\<name>` 必须是 Junction 且目标正确 |
+| 1 | 链接覆盖 | 仓库每个含 `SKILL.md` 的目录（frontmatter `name` 自动推导）× 各启用端（`agents` 的 `skillsEnabled`，当前 5 端），`skills\<name>` 必须是 Junction 且目标正确 |
 | 2 | 死链 | 各启用端指向本仓库的 Junction，目标必须还存在（删技能没拆链 = 死链） |
-| 3 | 硬链接组 | `~\.claude\CLAUDE.md` ⇄ `~\.dsh\AGENTS.md` ⇄ `~\.codex\AGENTS.md` ⇄ `~\.zcode\AGENTS.md` ⇄ `~\.qoder-cn\AGENTS.md`（2026-10-11 由 .qoder 换端） ⇄ `~\.minimax\AGENTS.md` 同组且非空；CodeBuddy 走 `rules\core-discipline.md` 手工副本不在组（官方不读裸 CLAUDE.md，2026-10-10 实证） |
+| 3 | 硬链接组 | `~\.claude\CLAUDE.md` ⇄ `~\.dsh\AGENTS.md` ⇄ `~\.codex\AGENTS.md` ⇄ `~\.zcode\AGENTS.md` ⇄ `~\.qoder-cn\AGENTS.md`（2026-10-11 由 .qoder 换端） ⇄ `~\.minimax\AGENTS.md` ⇄ `~\.config\opencode\AGENTS.md`（2026-10-21 接入，OpenCode 全局规则；它缺失时会回退读 `.claude\CLAUDE.md`，建了才顶替那条回退）同组且非空；CodeBuddy 2026-10-10 至 2026-10-21 曾走 `rules\core-discipline.md` 手工副本不在组（官方不读裸 CLAUDE.md，2026-10-10 实证），随 CodeBuddy CN 卸载摘除 |
 | 4 | frontmatter | `name`/`description` 必填，`name` 全小写 kebab-case |
 | 5 | README 区块 | 仓库根 README 顶部技能列表（`BEGIN/END` 标记内）与实际技能集合一致，且描述文案/序号与生成器输出逐字一致（漂移报 `ReadmeBlockDrift`，-Fix 整块重生成） |
 | 6 | 红线 | `coding-rules` 是独立 git 仓库，任何端不得挂它 |
 | 7 | JUNCTION说明.md | 每技能必有（家族子技能除外），各启用端路径齐全，无陈旧名/污染串；缺失或污染自动重建，缺端自动补行（按 `agents` 端清单跟随） |
 | 8 | 相关技能互链 | 每技能 README「相关技能」列表含全部其他技能的 GitHub 链接，缺的自动补行；描述文案与 `sync-config.json` 逐字一致，漂移自动原位重写 |
-| 9 | ssh-mcp 配置 Junction | 六端 `<home>\ssh-mcp`（claude/dsh/codex/zcode/codebuddy 直挂 home，Qoder CN 在 `~\.qoder-cn\ssh-mcp`）Junction → 仓库 `assets\ssh-mcp`（数据源 toml 唯一真相，内网档案丢失只报告）；junction 自身 ACL 须收紧（继承的 Everyone 会令 ssh-mcp 拒启动） |
-| 10 | ssh-mcp 各端注册 | 六端统一 launcher 形态：`node <home>\ssh-mcp\launcher.js --config=<本端toml>`（Claude `.claude.json` / DeepSeek Harness web patch / Codex `config.toml` / ZCode 客户端 `.zcode\cli\config.json` / CLI `.zcode\cli\setting.json`（两文件不共享，2026-10-19 `zcode doctor` 实证：CLI 的 `config.json` 仅作迁移源） / Qoder CN `.qoder-cn\mcp.json`，2026-10-11 换端：国内版 MCP 落点为独立 mcp.json / CodeBuddy `.codebuddy\mcp.json`），注册块零密码；密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份并做对账（键须覆盖 toml 全部 profile，防新增服务器忘配密码）；旧形态/缺失 -Fix 自动迁移（备份→校验→失败回滚） |
+| 9 | ssh-mcp 配置 Junction | 五端 `<home>\ssh-mcp`（claude/dsh/codex/zcode 直挂 home，Qoder CN 在 `~\.qoder-cn\ssh-mcp`）Junction → 仓库 `assets\ssh-mcp`（数据源 toml 唯一真相，内网档案丢失只报告）；junction 自身 ACL 须收紧（继承的 Everyone 会令 ssh-mcp 拒启动） |
+| 10 | ssh-mcp 各端注册 | 五端统一 launcher 形态：`node <home>\ssh-mcp\launcher.js --config=<本端toml>`（Claude `.claude.json` / DeepSeek Harness web patch / Codex `config.toml` / ZCode 客户端 `.zcode\cli\config.json` / CLI `.zcode\cli\setting.json`（两文件不共享，2026-10-19 `zcode doctor` 实证：CLI 的 `config.json` 仅作迁移源） / Qoder CN `.qoder-cn\mcp.json`，2026-10-11 换端：国内版 MCP 落点为独立 mcp.json），注册块零密码；密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份并做对账（键须覆盖 toml 全部 profile，防新增服务器忘配密码）；旧形态/缺失 -Fix 自动迁移（备份→校验→失败回滚） |
 | 11 | 通用 MCP 同步 | `sync-config.json` 的 `mcpSync.servers` 登记的 MCP（codegraph/dbx…）各端 command+args 解析级比对（node YAML / python tomllib / JSON，共享 insert 块也能识别）；支持 `perEndCommand`/`perEndArgsPrepend`/`perEndArgs` 按端覆盖（比对与修复都按生效值）；Claude 端 `.claude.json` 只读检查不自动写；缺失/漂移 -Fix 自动补齐重写；env 不跨端，带敏感值的学 ssh 用 launcher；http 型（idea）暂不支持；ZCode 分两端登记：`zcode`（客户端）落 `.zcode\cli\config.json`、`zcodeCli`（命令行）落 `.zcode\cli\setting.json`，两文件不互相同步 |
-| 12 | 防护 hooks 同步 | 源 = `~\.claude\settings.json` hooks 段；ZCode 落点 `~\.zcode\cli\config.json` 的 `hooks.events`（runner 须 `enabled: true`），经 `hooks-convert.js` 转换（丢 SessionEnd、去 MultiEdit、`--source=zcode` 改写、shell 串拆 process 型）；缺失/漂移 -Fix 幂等合并；Qoder CN（`~\.qoder-cn`，2026-10-11 换端）/CodeBuddy 落点各自 `settings.json` 的 hooks 组（与 Claude 同构，`--source=qoder`/`--source=codebuddy` 改写、排除 tokentracker）；Codex 端只报告（trusted_hash 机制不可自动改写） |
+| 12 | 防护 hooks 同步 | 源 = `~\.claude\settings.json` hooks 段；ZCode 落点 `~\.zcode\cli\config.json` 的 `hooks.events`（runner 须 `enabled: true`），经 `hooks-convert.js` 转换（丢 SessionEnd、去 MultiEdit、`--source=zcode` 改写、shell 串拆 process 型）；缺失/漂移 -Fix 幂等合并；Qoder CN（`~\.qoder-cn`，2026-10-11 换端）落点 `settings.json` 的 hooks 组（与 Claude 同构，`--source=qoder` 改写、排除 tokentracker）；Codex 端只报告（trusted_hash 机制不可自动改写） |
 | 13 | 规则手工副本 | 跨卷/异机制副本登记在 `rulesHardlink.manualCopies`：`coding-rules\CLAUDE.md`（F 盘进不了硬链接组）；WorkBuddy 用户级记忆 `~\.workbuddy\user-<id>-personal\MEMORY.md`（2026-10-11 接入，需专属头注释且有每会话约 4000 字符上限）：剥掉副本自身开头 `<!-- -->` 头注释后正文须与组正文一致；漂移 -Fix 自动重写（保留其头注释），副本整份丢失不自动修（要先写身份头注释） |
 
 `.zcode` 里的中转链接（→ `.claude` 官方技能、→ `.codex\.system` 系统技能）只验"上游还在"，上游删了报死链，**只报告不自动修**。
@@ -56,7 +56,7 @@ powershell -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\sc
 # 自动修复机械性问题（补挂链接、非递归拆死链、重生成 README 区块）
 powershell -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\sync-check.ps1" -Fix
 
-# 硬链接组重建（哈希守卫：组内 6 份 SHA256 全部一致才重建，分叉即拒绝；缺失成员哈希全等时自动补建）
+# 硬链接组重建（哈希守卫：组内 7 份 SHA256 全部一致才重建，分叉即拒绝；缺失成员哈希全等时自动补建）
 powershell -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\sync-check.ps1" -FixHardlink
 ```
 
@@ -71,21 +71,21 @@ agent-config-sync-check/
 ├── SKILL.md              ← 技能指令（触发词、检查流程、修复规则、红线）
 ├── README.md             ← 本文档
 ├── JUNCTION说明.md        ← 各启用端 junction 指向关系与回滚方法
-├── HOOKS说明.md           ← 六端防护能力对照（hooks/规则/插件，能力对齐实现各异）
+├── HOOKS说明.md           ← 五端防护能力对照（hooks/规则/插件，能力对齐实现各异）
 ├── .gitignore            ← 排除 logs/、assets/ssh-mcp/ 下 toml+密码文件（内网档案不入公开仓）
 ├── sync-config.json      ← 各端路径与开关（agents 含 label）、硬链接组路径、README 标记、sshMcpConfig
 ├── assets/
-│   └── ssh-mcp/          ← ssh-mcp 数据源（六端 Junction 指向这里；目录与各端 junction ACL 均已收紧）
+│   └── ssh-mcp/          ← ssh-mcp 数据源（五端 Junction 指向这里；目录与各端 junction ACL 均已收紧）
 │       ├── ssh-mcp-config.toml   ← 服务器档案（内网拓扑，gitignore）
 │       ├── ssh-passwords.env     ← 密码单文件（全体系唯一密码副本，gitignore）
 │       └── launcher.js           ← 注入器：读密码文件→注入 env→拉起 ssh-mcp（入 git，零密码）
 ├── logs/                 ← 检查日志（不入 git）
 └── scripts/
     ├── sync-check.ps1    ← 检查/修复核心脚本（PS 5.1 兼容，源码纯 ASCII 零密码）
-    ├── ssh-claude-register.js← -Fix 专用：Claude/CodeBuddy 端 ssh 注册重写为 launcher 形态
+    ├── ssh-claude-register.js← -Fix 专用：Claude 端 ssh 注册重写为 launcher 形态
     ├── register-zcode.js     ← -Fix 专用：ZCode 端 mcp.servers 注册写入（客户端 config.json 与 CLI setting.json 通用；整文件重写，键序按插入序保留，只动目标子树）
-    ├── register-codebuddy.js ← -Fix 专用：CodeBuddy 端 mcpServers 注册写入（备份+复验）
-    └── register-codebuddy-hooks.js ← -Fix 专用：CodeBuddy 端 hooks 幂等合并（备份+复验）
+    ├── register-codebuddy.js ← -Fix 专用：`codebuddy-json` 形态 mcpServers 注册写入（通用类型处理器：CodeBuddy 端 2026-10-21 卸载后已无端使用，保留；备份+复验）
+    └── register-codebuddy-hooks.js ← -Fix 专用：`codebuddy-json-hooks` 形态 hooks 幂等合并（通用类型处理器，同上保留；备份+复验）
 ```
 
 ## 每日定时（可选）
@@ -98,7 +98,7 @@ schtasks /Create /TN "agent-config-sync-check" /TR "powershell -NoProfile -File 
 
 ## 新增 skill 时
 
-仓库建目录 + `SKILL.md`（`name` = 各启用端链接名），各启用端各建一条 Junction（CodeBuddy 除外——它复用 `.claude\skills`，无需建），然后跑一次本技能——README 区块自动补齐、各端覆盖自动验证。配置里加新端只需在 `sync-config.json` 的 `agents` 数组加一行（含 `label` 端显示名字段），技能链接覆盖/死链/红线/JUNCTION说明.md 补行全部自动跟随，无需改脚本。
+仓库建目录 + `SKILL.md`（`name` = 各启用端链接名），各启用端各建一条 Junction，然后跑一次本技能——README 区块自动补齐、各端覆盖自动验证。配置里加新端只需在 `sync-config.json` 的 `agents` 数组加一行（含 `label` 端显示名字段），技能链接覆盖/死链/红线/JUNCTION说明.md 补行全部自动跟随，无需改脚本。
 
 ## 安装
 
