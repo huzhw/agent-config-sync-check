@@ -35,9 +35,9 @@
 | 6 | 红线 | `coding-rules` 是独立 git 仓库，任何端不得挂它 |
 | 7 | JUNCTION说明.md | 每技能必有（家族子技能除外），各启用端路径齐全，无陈旧名/污染串；缺失或污染自动重建，缺端自动补行（按 `agents` 端清单跟随） |
 | 8 | 相关技能互链 | 每技能 README「相关技能」列表含全部其他技能的 GitHub 链接，缺的自动补行；描述文案与 `sync-config.json` 逐字一致，漂移自动原位重写 |
-| 9 | ssh-mcp 配置 Junction | 五端 `<home>\ssh-mcp`（claude/dsh/codex/zcode 直挂 home，Qoder CN 在 `~\.qoder-cn\ssh-mcp`）Junction → 仓库 `assets\ssh-mcp`（数据源 toml 唯一真相，内网档案丢失只报告）；junction 自身 ACL 须收紧（继承的 Everyone 会令 ssh-mcp 拒启动） |
-| 10 | ssh-mcp 各端注册 | 五端统一 launcher 形态：`node <home>\ssh-mcp\launcher.js --config=<本端toml>`（Claude `.claude.json` / DeepSeek Harness web patch / Codex `config.toml` / ZCode 客户端 `.zcode\cli\config.json` / CLI `.zcode\cli\setting.json`（两文件不共享，2026-10-19 `zcode doctor` 实证：CLI 的 `config.json` 仅作迁移源） / Qoder CN `.qoder-cn\mcp.json`，2026-10-11 换端：国内版 MCP 落点为独立 mcp.json），注册块零密码；密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份并做对账（键须覆盖 toml 全部 profile，防新增服务器忘配密码）；旧形态/缺失 -Fix 自动迁移（备份→校验→失败回滚） |
-| 11 | 通用 MCP 同步 | `sync-config.json` 的 `mcpSync.servers` 登记的 MCP（codegraph/dbx…）各端 command+args 解析级比对（node YAML / python tomllib / JSON，共享 insert 块也能识别）；支持 `perEndCommand`/`perEndArgsPrepend`/`perEndArgs` 按端覆盖（比对与修复都按生效值）；Claude 端 `.claude.json` 只读检查不自动写；缺失/漂移 -Fix 自动补齐重写；env 不跨端，带敏感值的学 ssh 用 launcher；http 型（idea）暂不支持；ZCode 分两端登记：`zcode`（客户端）落 `.zcode\cli\config.json`、`zcodeCli`（命令行）落 `.zcode\cli\setting.json`，两文件不互相同步 |
+| 9 | ssh-mcp 配置 Junction | 六端 `<home>\ssh-mcp`（claude/dsh/codex/zcode 直挂 home，Qoder CN 在 `~\.qoder-cn\ssh-mcp`，OpenCode 在 `~\.config\opencode\ssh-mcp`）Junction → 仓库 `assets\ssh-mcp`（数据源 toml 唯一真相，内网档案丢失只报告）；junction 自身 ACL 须收紧（继承的 Everyone 会令 ssh-mcp 拒启动） |
+| 10 | ssh-mcp 各端注册 | 六端统一 launcher 形态：`node <home>\ssh-mcp\launcher.js --config=<本端toml>`（Claude `.claude.json` / DeepSeek Harness web patch / Codex `config.toml` / ZCode 客户端 `.zcode\cli\config.json` / CLI `.zcode\cli\setting.json`（两文件不共享，2026-10-19 `zcode doctor` 实证：CLI 的 `config.json` 仅作迁移源） / Qoder CN `.qoder-cn\mcp.json`，2026-10-11 换端：国内版 MCP 落点为独立 mcp.json / **OpenCode `.config\opencode\opencode.jsonc` 的 `mcp.servers.ssh.command` 单数组**，2026-10-21 接入），注册块零密码；密码只存 `assets\ssh-mcp\ssh-passwords.env` 一份并做对账（键须覆盖 toml 全部 profile，防新增服务器忘配密码）；旧形态/缺失 -Fix 自动迁移（备份→校验→失败回滚） |
+| 11 | 通用 MCP 同步 | `sync-config.json` 的 `mcpSync.servers` 登记的 MCP（codegraph/dbx/context7）各端 command+args 解析级比对（node YAML / python tomllib / JSON，共享 insert 块也能识别）；支持 `perEndCommand`/`perEndArgsPrepend`/`perEndArgs` 按端覆盖（比对与修复都按生效值）；Claude 端 `.claude.json` 只读检查不自动写；缺失/漂移 -Fix 自动补齐重写；env 不跨端，带敏感值的学 ssh 用 launcher；http 型（idea）暂不支持；ZCode 分两端登记：`zcode`（客户端）落 `.zcode\cli\config.json`、`zcodeCli`（命令行）落 `.zcode\cli\setting.json`，两文件不互相同步；**OpenCode 端类型 `opencode-json`**（2026-10-21 接入）：opencode 把 exe 与参数写在一个 `command` 数组里，故用端级覆盖钉绝对 `node.exe` 并前置 `npm-shim.js`／`bin/*.js`（opencode 直接 spawn 不过 shell，裸命令与 `.cmd` shim 起不来）；写回脚本遇文件内 `//`、`/* */` 注释会拒绝重写（JSON 序列化会吞注释） |
 | 12 | 防护 hooks 同步 | 源 = `~\.claude\settings.json` hooks 段；ZCode 落点 `~\.zcode\cli\config.json` 的 `hooks.events`（runner 须 `enabled: true`），经 `hooks-convert.js` 转换（丢 SessionEnd、去 MultiEdit、`--source=zcode` 改写、shell 串拆 process 型）；缺失/漂移 -Fix 幂等合并；Qoder CN（`~\.qoder-cn`，2026-10-11 换端）落点 `settings.json` 的 hooks 组（与 Claude 同构，`--source=qoder` 改写、排除 tokentracker）；Codex 端只报告（trusted_hash 机制不可自动改写） |
 | 13 | 规则手工副本 | 跨卷/异机制副本登记在 `rulesHardlink.manualCopies`：`coding-rules\CLAUDE.md`（F 盘进不了硬链接组）；WorkBuddy 用户级记忆 `~\.workbuddy\user-<id>-personal\MEMORY.md`（2026-10-11 接入，需专属头注释且有每会话约 4000 字符上限）：剥掉副本自身开头 `<!-- -->` 头注释后正文须与组正文一致；漂移 -Fix 自动重写（保留其头注释），副本整份丢失不自动修（要先写身份头注释） |
 
@@ -75,7 +75,7 @@ agent-config-sync-check/
 ├── .gitignore            ← 排除 logs/、assets/ssh-mcp/ 下 toml+密码文件（内网档案不入公开仓）
 ├── sync-config.json      ← 各端路径与开关（agents 含 label）、硬链接组路径、README 标记、sshMcpConfig
 ├── assets/
-│   └── ssh-mcp/          ← ssh-mcp 数据源（五端 Junction 指向这里；目录与各端 junction ACL 均已收紧）
+│   └── ssh-mcp/          ← ssh-mcp 数据源（六端 Junction 指向这里；目录与各端 junction ACL 均已收紧）
 │       ├── ssh-mcp-config.toml   ← 服务器档案（内网拓扑，gitignore）
 │       ├── ssh-passwords.env     ← 密码单文件（全体系唯一密码副本，gitignore）
 │       └── launcher.js           ← 注入器：读密码文件→注入 env→拉起 ssh-mcp（入 git，零密码）
@@ -86,6 +86,7 @@ agent-config-sync-check/
     ├── register-zcode.js     ← -Fix 专用：ZCode 端 mcp.servers 注册写入（客户端 config.json 与 CLI setting.json 通用；整文件重写，键序按插入序保留，只动目标子树）
     ├── register-zcode-hooks.js ← -Fix 专用：ZCode `hooks` 段幂等合并（process 型数组参数、备份+复验）
     ├── register-qoder.js     ← -Fix 专用：Qoder 端 mcpServers 注册写入（Claude 同构，备份+复验）
+    ├── register-opencode.js  ← -Fix 专用：OpenCode 端 mcp.servers 注册写入（一个 command 数组 = exe + 参数；遇 JSONC 注释拒绝重写，备份+复验）
     ├── hooks-convert.js      ← -Fix 专用：Claude settings.json 钩子 → 各端形态转换
     └── register-qoder-hooks.js ← -Fix 专用：Qoder hooks 幂等合并（按脚本路径原位替换、清重复条目、备份+复验）
 ```

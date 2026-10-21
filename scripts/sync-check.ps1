@@ -564,6 +564,15 @@ function Add-SshRegistration {
                 $out = & node $helper $file $name ([string]$c.command) $launcher "--config=$cfgPath" 2>&1
                 if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*QODER_REGISTER_OK*') { throw "qoder register failed: $out" }
             }
+            'opencode-json' {
+                # opencode needs one command array; an end may pin its own
+                # interpreter (absolute node.exe) instead of the shared "node".
+                $helper = Join-Path $script:ScriptDir 'register-opencode.js'
+                $endCmd = [string]$c.command
+                if ($end.PSObject.Properties['command']) { $endCmd = [string]$end.command }
+                $out = & node $helper $file $name $endCmd $launcher "--config=$cfgPath" 2>&1
+                if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*OPENCODE_REGISTER_OK*') { throw "opencode register failed: $out" }
+            }
             default { throw "unsupported registration type: $($end.type)" }
         }
         # backup is kept on purpose (*.bak-sshmcp-* never enters git)
@@ -748,6 +757,27 @@ function Test-SshMcpRegistration {
                 }
                 Add-Issue $agent 'ERROR' 'SshMcpLegacyRegistration' "mcpServers.$name is not in launcher form (command=$([string]$srv.command)) - passwords must live only in ssh-passwords.env" ([bool]$end.fixable) -LinkName $endName
             }
+            'opencode-json' {
+                # opencode holds a local server as mcp.servers.<name>.command =
+                # [exe, ...args]; the end may pin its own interpreter path.
+                $expCmd = $command
+                if ($end.PSObject.Properties['command']) { $expCmd = [string]$end.command }
+                $parsedEnd = Get-McpParsedEnd 'opencode-json' $file
+                $srvObj = $null
+                if ($parsedEnd) { $sp = $parsedEnd.PSObject.Properties[$name]; if ($sp) { $srvObj = $sp.Value } }
+                if (-not $srvObj) {
+                    Add-Issue $agent 'ERROR' 'SshMcpNotRegistered' "no mcp.servers.$name in $file" ([bool]$end.fixable) -LinkName $endName
+                    continue
+                }
+                if ([string]$srvObj.command -eq $expCmd -and @($srvObj.args | ForEach-Object { [string]$_ }) -contains $launcherPath) {
+                    $argsText = @($srvObj.args | ForEach-Object { [string]$_ }) -join ' '
+                    if ($argsText -notlike "*--config=$cfgPath*") {
+                        Add-Issue $agent 'ERROR' 'SshMcpStalePath' "mcp.servers.$name launcher args point elsewhere: $argsText" ([bool]$end.fixable) -LinkName $endName
+                    }
+                    continue
+                }
+                Add-Issue $agent 'ERROR' 'SshMcpLegacyRegistration' "mcp.servers.$name is not in launcher form (command=$([string]$srvObj.command)) - passwords must live only in ssh-passwords.env" ([bool]$end.fixable) -LinkName $endName
+            }
             'zcode-project-json' {
                 # ZCode ssh is project-scoped: every whitelisted repo carries the
                 # launcher-form registration in <repo>\.zcode\config.json, while the
@@ -875,7 +905,58 @@ for (const k of Object.keys(ms)) {
 }
 console.log(JSON.stringify(out));
 '@
-    return @($js, $py, $zjs, $cjs)
+    $ojs = Join-Path $script:LogDir 'parse-opencode.js'
+    Write-NoBomUtf8 -Path $ojs -Text @'
+// usage: node parse-opencode.js <opencode.json[c]>
+// Two accepted shapes (both documented by opencode):
+//   mcp.servers.<name> = { type:"local", command:["cmd","arg1",...] }   (current)
+//   mcp.<name>         = { type:"local", command:["cmd","arg1",...] }   (legacy, deprecated)
+// A local server declares command as ONE array (executable + args), so the
+// first element becomes the command and the rest become args.
+const fs = require("fs");
+function stripJsonc(text) {
+  let out = "";
+  let i = 0;
+  let inStr = false;
+  while (i < text.length) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if (inStr) {
+      out += ch;
+      if (ch === "\\") { out += next || ""; i += 2; continue; }
+      if (ch === '"') { inStr = false; }
+      i++;
+      continue;
+    }
+    if (ch === '"') { inStr = true; out += ch; i++; continue; }
+    if (ch === "/" && next === "/") { while (i < text.length && text[i] !== "\n") { i++; } continue; }
+    if (ch === "/" && next === "*") { i += 2; while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) { i++; } i += 2; continue; }
+    out += ch;
+    i++;
+  }
+  // trailing commas before } or ]
+  return out.replace(/,\s*([}\]])/g, "$1");
+}
+const raw = fs.readFileSync(process.argv[2], "utf8");
+const d = JSON.parse(stripJsonc(raw));
+const mcp = d.mcp || {};
+let map = mcp.servers;
+if (!map) {
+  map = {};
+  for (const k of Object.keys(mcp)) {
+    if (k === "servers" || k === "timeout") { continue; }
+    map[k] = mcp[k];
+  }
+}
+const out = {};
+for (const k of Object.keys(map)) {
+  const e = map[k] || {};
+  const arr = Array.isArray(e.command) ? e.command.map(String) : (e.command ? [String(e.command)] : []);
+  out[k] = { command: arr.length ? arr[0] : "", args: arr.slice(1) };
+}
+console.log(JSON.stringify(out));
+'@
+    return @($js, $py, $zjs, $cjs, $ojs)
 }
 
 function Get-McpParsedEnd {
@@ -899,6 +980,11 @@ function Get-McpParsedEnd {
         # Qoder user settings use the same top-level mcpServers shape as Claude.
         $out = & node $assets[3] $File 2>&1
         if ($LASTEXITCODE -ne 0) { throw "qoder config parse failed: $out" }
+        return ($out | ConvertFrom-Json)
+    } elseif ($Type -eq 'opencode-json') {
+        # opencode keeps local servers as command = [exe, ...args] (mcp.servers.<name>).
+        $out = & node $assets[4] $File 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "opencode config parse failed: $out" }
         return ($out | ConvertFrom-Json)
     } else {
         $out = & ($script:McpPyPath) $assets[1] $File 2>&1
@@ -1052,7 +1138,7 @@ function Test-McpSync {
             } else {
                 $e = $parsed[$key].PSObject.Properties[$name]
                 if (-not $e) {
-                    $where = if ([string]$end.type -eq 'zcode-json') { "no mcp.servers.$name in $($end.file)" } elseif ([string]$end.type -eq 'claude-json' -or [string]$end.type -eq 'qoder-json') { "no mcpServers.$name in $($end.file)" } else { "no [mcp_servers.$name] section in $($end.file)" }
+                    $where = if ([string]$end.type -eq 'zcode-json' -or [string]$end.type -eq 'opencode-json') { "no mcp.servers.$name in $($end.file)" } elseif ([string]$end.type -eq 'claude-json' -or [string]$end.type -eq 'qoder-json') { "no mcpServers.$name in $($end.file)" } else { "no [mcp_servers.$name] section in $($end.file)" }
                     Add-Issue $agent 'ERROR' 'McpMissing' $where $fixable -LinkName $link
                     continue
                 }
@@ -1117,6 +1203,17 @@ function Add-McpRegistration {
             $parsed = Get-McpParsedEnd 'qoder-json' $file
             $e = $parsed.PSObject.Properties[[string]$srv.name]
             if (-not $e) { throw "post-append verify failed: entry not found" }
+        } elseif ([string]$end.type -eq 'opencode-json') {
+            # opencode takes one command array, so the helper rebuilds it from
+            # the effective command + args of this end.
+            $helper = Join-Path $script:ScriptDir 'register-opencode.js'
+            $argStrs = @($argList | ForEach-Object { [string]$_ })
+            $out = & node $helper $file ([string]$srv.name) $command @argStrs 2>&1
+            if ($LASTEXITCODE -ne 0 -or ($out | Out-String) -notlike '*OPENCODE_REGISTER_OK*') { throw "opencode register failed: $out" }
+            $parsed = Get-McpParsedEnd 'opencode-json' $file
+            $e = $parsed.PSObject.Properties[[string]$srv.name]
+            if (-not $e) { throw "post-append verify failed: entry not found" }
+            if ($e.Value.command -ne $command) { throw "post-append verify failed: command mismatch" }
         } else {
             Remove-SshRegistrationBlock -Type 'codex-toml' -File $file -Name ([string]$srv.name) | Out-Null
             $nl = "`r`n"

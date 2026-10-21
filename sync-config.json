@@ -37,7 +37,7 @@
     "enabled": true,
     "sourceDir": "F:\\idea-workspase-skills\\agent-config-sync-check\\assets\\ssh-mcp",
     "configFileName": "ssh-mcp-config.toml",
-    "junctionEnds": ["claude", "dsh", "codex", "zcode", "qoder"],
+    "junctionEnds": ["claude", "dsh", "codex", "zcode", "qoder", "opencode"],
     "registration": {
       "serverName": "ssh",
       "command": "node",
@@ -68,7 +68,8 @@
           ],
           "fixable": true
         },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json", "configPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/launcher.js", "fixable": true }
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json", "configPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/launcher.js", "fixable": true },
+        "opencode": { "type": "opencode-json", "file": "C:\\Users\\Administrator\\.config\\opencode\\opencode.jsonc", "configPath": "C:/Users/Administrator/.config/opencode/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.config/opencode/ssh-mcp/launcher.js", "command": "F:/nvm/v22.20.0/node.exe", "fixable": true }
       }
     }
   },
@@ -79,31 +80,39 @@
         "name": "codegraph",
         "command": "codegraph",
         "args": ["serve", "--mcp"],
+        "perEndCommand": { "opencode": "F:/nvm/v22.20.0/node.exe" },
+        "perEndArgsPrepend": { "opencode": ["C:/Users/Administrator/node_global/node_modules/@colbymchenry/codegraph/npm-shim.js"] },
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-codegraph", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
         "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" }
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
+        "opencode": { "type": "opencode-json", "file": "C:\\Users\\Administrator\\.config\\opencode\\opencode.jsonc" }
       },
       {
         "name": "dbx",
         "command": "dbx-mcp-server",
         "args": [],
+        "perEndCommand": { "opencode": "F:/nvm/v22.20.0/node.exe" },
+        "perEndArgsPrepend": { "opencode": ["C:/Users/Administrator/node_global/node_modules/@dbx-app/mcp-server/bin/dbx-mcp-server.js"] },
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-dbx", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
         "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" }
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
+        "opencode": { "type": "opencode-json", "file": "C:\\Users\\Administrator\\.config\\opencode\\opencode.jsonc" }
       },
       {
         "name": "context7",
         "command": "node",
         "args": ["C:/Users/Administrator/node_global/node_modules/@upstash/context7-mcp/dist/index.js"],
+        "perEndCommand": { "opencode": "F:/nvm/v22.20.0/node.exe" },
         "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-context7", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
         "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" }
+        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
+        "opencode": { "type": "opencode-json", "file": "C:\\Users\\Administrator\\.config\\opencode\\opencode.jsonc" }
       }
     ],
     "pythonPath": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
