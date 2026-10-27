@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   agent-config-sync-check - sync guard core script (8 agent ends + skill repo)
@@ -613,9 +613,36 @@ function Remove-SshUserRegistration {
     return $true
 }
 
+function Test-SshViaGateway {
+    # ssh 归网关模式（2026-10-27 起）：ssh-mcp 由常驻服务 mcp-gateway 统一拉起，
+    # 各端只留一个 mcp-gateway stdio 桥（那份由检查项 11 管）。这里只保证两件事：
+    #   1) 网关那份 ssh 配置在（LocalSystem 专用副本，ACL 只留 SYSTEM + Administrators）；
+    #   2) 没有哪个端还在逐端登记 ssh-mcp —— 留着就会多拉一份 ssh-mcp（约 57MB/端），
+    #      而且是拿客户端那份配置、和网关那份是两本账。
+    # 例外：ZCode 项目级登记（zcode-project-json）不在本检查范围，只在该仓库会话里拉一份。
+    param([object]$Cfg)
+    $reg = $Cfg.registration
+    $gwCfg = 'C:\ProgramData\mcp-gateway\ssh-mcp-config.toml'
+    if (-not (Test-Path -LiteralPath $gwCfg)) {
+        Add-Issue 'ssh-mcp' 'ERROR' 'SshGatewayConfigMissing' "网关专用 ssh 配置不存在：$gwCfg（跑 mcp-gateway\tools\sync-ssh-config.ps1 从客户端那份同步）" $false
+    }
+    foreach ($prop in $reg.ends.PSObject.Properties) {
+        $endName = $prop.Name
+        $end = $prop.Value
+        if ([string]$end.type -eq 'zcode-project-json') { continue }
+        $file = [string]$end.file
+        if (-not $file -or -not (Test-Path -LiteralPath $file)) { continue }
+        $text = Get-Content -LiteralPath $file -Raw -Encoding UTF8
+        if ($text -match 'ssh-mcp') {
+            Add-Issue 'ssh-mcp' 'ERROR' 'SshMcpStillPerEnd' "$endName 仍逐端登记 ssh-mcp（ssh 已归网关，多拉一份约 57MB）：跑 node mcp-gateway\tools\prune-legacy-mcp.mjs --names=ssh --apply" $false -LinkName $endName -LinkPath $file
+        }
+    }
+}
+
 function Test-SshMcpRegistration {
     param([object]$Cfg)
     $c = Get-SshCfg $Cfg
+    if ($c -and [string]$c.mode -eq 'gateway') { Test-SshViaGateway $c; return }
     if (-not $c -or -not $c.enabled -or -not $c.registration) { return }
     $reg = $c.registration
     $name = [string]$reg.serverName

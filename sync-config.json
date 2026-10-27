@@ -35,6 +35,8 @@
   },
   "sshMcpConfig": {
     "enabled": true,
+    "_mode_note": "gateway = ssh-mcp 由常驻网关 mcp-gateway 统一拉起（2026-10-27 起），各端不再逐端登记 ssh；检查项 10 改为核对「谁还在逐端登记」+ 网关那份 LocalSystem 专用配置在不在。改回 legacy 就恢复原来那套逐端 launcher 校验。",
+    "mode": "gateway",
     "sourceDir": "F:\\idea-workspase-skills\\agent-config-sync-check\\assets\\ssh-mcp",
     "configFileName": "ssh-mcp-config.toml",
     "junctionEnds": ["claude", "dsh", "codex", "zcode", "qoder", "opencode"],
