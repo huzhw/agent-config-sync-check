@@ -75,39 +75,17 @@
   },
   "mcpSync": {
     "enabled": true,
+    "_comment": "2026-10-27 改：codegraph / dbx / context7 三个 stdio 服务改由常驻网关 mcp-gateway 统一拉起（NSSM 服务，127.0.0.1:18800），各端只登记一个 stdio 桥（mcp-gateway/src/stdio-bridge.js）。原来那三条若继续留在本表，-Fix 会把它们逐端塞回去，等于每个客户端又拉三份服务（实测 500 MB/客户端），故整条移除；旧登记由 mcp-gateway/tools/prune-legacy-mcp.mjs 一次性清掉。ssh 不走网关（配置 ACL 与 LocalSystem 账号冲突，见 mcp-gateway/config/servers.json 的 _note），仍由检查项 10 单独管。",
     "servers": [
       {
-        "name": "codegraph",
-        "command": "codegraph",
-        "args": ["serve", "--mcp"],
-        "perEndCommand": { "opencode": "F:/nvm/v22.20.0/node.exe" },
-        "perEndArgsPrepend": { "opencode": ["C:/Users/Administrator/node_global/node_modules/@colbymchenry/codegraph/npm-shim.js"] },
-        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-codegraph", "clientName": "@deepseek-ai/dsh-mcp-client" },
-        "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
-        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
-        "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
-        "opencode": { "type": "opencode-json", "file": "C:\\Users\\Administrator\\.config\\opencode\\opencode.jsonc" }
-      },
-      {
-        "name": "dbx",
-        "command": "dbx-mcp-server",
-        "args": [],
-        "perEndCommand": { "opencode": "F:/nvm/v22.20.0/node.exe" },
-        "perEndArgsPrepend": { "opencode": ["C:/Users/Administrator/node_global/node_modules/@dbx-app/mcp-server/bin/dbx-mcp-server.js"] },
-        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-dbx", "clientName": "@deepseek-ai/dsh-mcp-client" },
-        "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
-        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
-        "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
-        "opencode": { "type": "opencode-json", "file": "C:\\Users\\Administrator\\.config\\opencode\\opencode.jsonc" }
-      },
-      {
-        "name": "context7",
-        "command": "node",
-        "args": ["C:/Users/Administrator/node_global/node_modules/@upstash/context7-mcp/dist/index.js"],
-        "perEndCommand": { "opencode": "F:/nvm/v22.20.0/node.exe" },
-        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-context7", "clientName": "@deepseek-ai/dsh-mcp-client" },
+        "name": "mcp-gateway",
+        "command": "F:/nvm/v22.20.0/node.exe",
+        "args": [
+          "F:/idea-workspase-skills/daily-report-panel/mcp-gateway/src/stdio-bridge.js",
+          "--url",
+          "http://127.0.0.1:18800/mcp"
+        ],
+        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-gateway", "clientName": "@deepseek-ai/dsh-mcp-client" },
         "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
         "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
         "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
