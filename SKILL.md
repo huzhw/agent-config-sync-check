@@ -110,6 +110,21 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 
 五端防护钩子（hooks/规则/插件）的能力对照与配置位置见本目录 `HOOKS说明.md`；脚本事实源与分发关系见 `coding-rules\SYNC说明.md` 第三节。
 
+## ssh-mcp 配置双副本（改 ssh 配置必读，2026-10-28 实战沉淀）
+
+ssh-mcp 已并入统一 MCP 网关（日报管家托管，`127.0.0.1:18800`），但网关统一的是**工具接入层**，配置文件仍是**双副本**，副本不会自动跟源头变：
+
+| 副本 | 路径 | 角色 |
+|---|---|---|
+| 源头（手改这份） | `C:\Users\Administrator\.dsh\ssh-mcp\ssh-mcp-config.toml` | 唯一维护点；`sync-config.json` 的 `sshMcpConfig.configPath` 即它 |
+| 网关副本（当只读看待） | `C:\ProgramData\mcp-gateway\ssh-mcp-config.toml` | 网关服务（LocalSystem）真读的份；ACL 故意只留 SYSTEM/Administrators，防 broad 写 |
+
+**改动三步（省不掉）**：① 改源头 → ② **提权**跑 `F:\idea-workspase-skills\daily-report-panel\mcp-gateway\tools\sync-ssh-config.ps1`（把源头推到网关副本并重套 ACL；加 `-Restart` 同步重启网关一步到位，不加则到日报管家面板点「重启网关」）→ ③ 用一条无害写命令（如 /tmp 建删文件）验证放行。非提权 shell 必三连拒（Copy-Item / Get-Acl / schtasks `-rl HIGHEST` 全拒），**不要尝试 headless 绕行**。
+
+**坑**：该 ps1 曾因 UTF-8 无 BOM 被 PowerShell 5.1 当 ANSI 劈坏语法（2026-10-28 已补 BOM，与 spec-check.ps1 同款病，见 memory-ai）；sync-check 的 `SshGatewayConfigMissing` 检查的就是网关副本缺失。
+
+**现行要点**（2026-10-28）：`server102` 显式 `group = "dev"`（演示环境放开写操作；原无 group 被网关按名误判 prod 只读，destructive 仍走默认审批）；`server197` 为 dev 组先例（role=admin + auto）。
+
 ## 新增 skill 上架流程（用户说"上架技能 / 新增技能"触发）
 
 环境常量：仓库 `F:\idea-workspase-skills`，GitHub 账号 `huzhw`，远端 `https://github.com/huzhw/<skill-name>.git`，运行时 Windows PowerShell 5.1（无 pwsh 7）。
