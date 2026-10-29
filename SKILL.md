@@ -74,7 +74,7 @@ pwsh -NoProfile -File "F:\idea-workspase-skills\agent-config-sync-check\scripts\
 - README 区块与实际不符 → 按 BEGIN/END 标记重新生成区块，标记外内容不动
 - JUNCTION说明.md 缺失 → 按 `templates\JUNCTION-template.md` 生成（`{NAME}` 占位替换）
 - JUNCTION说明.md 缺端 → 定位表格行 / `findstr` 行 / `rd` 行三处，按端序补齐缺的行（已有行的端不动，特殊说明段保留）
-- JUNCTION说明.md 陈旧名 → 幂等替换：`(?:前缀)+旧名` 折叠 + 负向断言锚定（旧名是新名后缀时，**禁止**裸 `String.Replace`——会自匹配叠加成污染串，这坑已踩过）
+- JUNCTION说明.md 陈旧名 → 幂等替换：`(?:前缀)+旧名` 折叠 + 负向断言锚定（旧名是新名后缀时，**禁止**裸 `String.Replace`——会自匹配叠加成污染串）
 - JUNCTION说明.md 污染串 → 判定依据 = 路径 token ∉ 已知技能名/仓库子目录集合；修复 = 模板重建（原版从 git HEAD 可查，无需备份）
 - README 互链缺 → 「相关技能」段末条后补缺的链接行（名称/仓库/中文说明全部来自 config：`githubRepos` + `relatedSkills`）
 - ssh-mcp Junction 缺失/目标错/断链 → mklink /J 重建（指向 `assets\ssh-mcp`）

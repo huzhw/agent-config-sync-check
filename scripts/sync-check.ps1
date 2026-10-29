@@ -1735,6 +1735,68 @@ function Test-RelatedLinks {
     }
 }
 
+# ---------- check 14: docs state current facts, no change-history narration ----------
+# A doc declares its own type on one of its first lines (docsHistory.recordMarker);
+# the type is NEVER inferred from the directory or file name - record docs and spec
+# docs live side by side (memory/, references/, report dirs hold both).
+# Spec docs must not narrate how they came to be; record docs may.
+# All Chinese literals (marker text, noise words) come from sync-config.json, so
+# this source stays ASCII-only (PS 5.1 would misparse non-ASCII without BOM).
+
+function Test-DocsNoHistory {
+    param([object]$Cfg)
+    $d = $Cfg.docsHistory
+    if (-not $d.enabled) { return }
+    $marker = [string]$d.recordMarker
+    $words = @($d.noisePatterns | Where-Object { $_ })
+    if ($words.Count -eq 0) { return }
+    $level = [string]$d.level
+    if (-not $level) { $level = 'WARN' }
+
+    $skipDirs = @($Cfg.excludeDirs) + @($d.skipDirs)
+    $skipDirs = @($skipDirs | Where-Object { $_ })
+    $escaped = ($skipDirs | ForEach-Object { [regex]::Escape($_) }) -join '|'
+    $skipRe = $null
+    if ($escaped) { $skipRe = '\\(' + $escaped + ')\\' }
+
+    # -File skips junctions/dirs; reparse points are skipped below (a junction into
+    # another skills dir would otherwise be walked twice and report doubled paths)
+    $files = @(Get-ChildItem -LiteralPath $Cfg.repo -Recurse -Filter '*.md' -File -Force |
+        Where-Object { -not ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) })
+    foreach ($f in $files) {
+        $full = $f.FullName
+        if ($skipRe -and (($full + '\') -match $skipRe)) { continue }
+        $lines = @(Get-Content -LiteralPath $full -Encoding UTF8)
+        if ($lines.Count -eq 0) { continue }
+
+        # record-type doc: self-declared marker near the top -> exempt from the check
+        $isRecord = $false
+        foreach ($h in ($lines | Select-Object -First 8)) {
+            if ($h -and $h.IndexOf($marker, [StringComparison]::Ordinal) -ge 0) { $isRecord = $true; break }
+        }
+        if ($isRecord) { continue }
+
+        $rel = $full.Substring($Cfg.repo.Length).TrimStart('\')
+        $inBanner = $false
+        $inFence = $false
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            $line = $lines[$i]
+            $t = $line.Trim()
+            # a trailing block comment at the very top is the file banner, not body
+            if ($i -eq 0 -and $t.StartsWith('<!--')) { $inBanner = $true }
+            if ($inBanner) { if ($t.Contains('-->')) { $inBanner = $false }; continue }
+            if ($t.StartsWith('```')) { $inFence = -not $inFence; continue }
+            if ($inFence) { continue }
+            foreach ($w in $words) {
+                if ($line.IndexOf($w, [StringComparison]::Ordinal) -ge 0) {
+                    Add-Issue 'docs' $level 'DocsHistoryNarrative' ("{0}:{1} contains '{2}'" -f $rel, ($i + 1), $w) $false
+                    break
+                }
+            }
+        }
+    }
+}
+
 # insert missing per-end lines into one block (table rows / findstr lines / rd lines)
 function Ensure-Block {
     param($Lines, [scriptblock]$IsLine, [hashtable]$NewLines)
@@ -2210,6 +2272,7 @@ function Invoke-AllChecks {
     Test-Readme $Cfg $Expected
     Test-JunctionDocs $Cfg $Expected
     Test-RelatedLinks $Cfg $Expected
+    Test-DocsNoHistory $Cfg
 }
 
 Invoke-AllChecks -Cfg $cfg -Expected $expected -Found $found

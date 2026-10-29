@@ -194,5 +194,24 @@
     "prd": "PRD 生成器（一句话需求→结构化需求文档）",
     "ralph": "PRD 转 prd.json（Ralph 自主执行格式）"
   },
-  "redlineDirs": ["coding-rules"]
+  "redlineDirs": ["coding-rules"],
+  "docsHistory": {
+    "_comment": "check 14: spec docs state current facts only; record docs declare themselves. Type is read from the doc itself, never inferred from path or file name.",
+    "enabled": true,
+    "level": "WARN",
+    "recordMarker": "文档类型: 记录",
+    "skipDirs": ["logs", "node_modules", "__pycache__", ".venv"],
+    "noisePatterns": [
+      "实踩",
+      "踩过",
+      "被退回",
+      "本次修改",
+      "改造前",
+      "改造后",
+      "以前是",
+      "原本是",
+      "原来是",
+      "曾经是"
+    ]
+  }
 }
