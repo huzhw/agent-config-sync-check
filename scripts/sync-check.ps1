@@ -276,6 +276,24 @@ function Get-RulesGroupSource {
     return $null
 }
 
+function Get-CopyBodySource {
+    # Per-copy body-source override. A manual copy may mirror a TRIMMED body
+    # instead of the full rules group body (the WorkBuddy mirror is capped at
+    # ~4000 chars per session, so it mirrors a trimmed brief). Returns $null
+    # when the copy mirrors the group body itself.
+    param([object]$Cfg, [string]$CopyPath)
+    $rh = $Cfg.rulesHardlink
+    if (-not $rh.PSObject.Properties['manualCopies']) { return $null }
+    foreach ($c in @($rh.manualCopies)) {
+        if ([string]$c.path -ne $CopyPath) { continue }
+        if (-not $c.PSObject.Properties['bodySource']) { return $null }
+        $bs = [string]$c.bodySource
+        if ($bs -and (Test-Path -LiteralPath $bs)) { return $bs }
+        return $null
+    }
+    return $null
+}
+
 function Test-IsRepoSideCopy {
     # A manualCopies entry that lives in the skill repo (F:) is the rule SOURCE,
     # not a mirror of the C: group body. "Fixing" it would overwrite the git
@@ -294,9 +312,12 @@ function Test-RulesManualCopy {
     if ($copies.Count -eq 0) { return }
     $src = Get-RulesGroupSource $Cfg
     if (-not $src) { return } # RulesFileMissing already reported by check 3
-    $srcText = Get-RulesCoreText -Path $src -StripHeaderComment $true
+    $groupSrcText = Get-RulesCoreText -Path $src -StripHeaderComment $true
     foreach ($c in $copies) {
         $cp = [string]$c.path
+        $bodySrc = Get-CopyBodySource -Cfg $Cfg -CopyPath $cp
+        $srcText = $groupSrcText
+        if ($bodySrc) { $srcText = Get-RulesCoreText -Path $bodySrc -StripHeaderComment $true }
         $strip = $true
         if ($c.PSObject.Properties['stripHeaderComment'] -and $c.stripHeaderComment -eq $false) { $strip = $false }
         if (-not (Test-Path -LiteralPath $cp)) {
@@ -311,7 +332,9 @@ function Test-RulesManualCopy {
                 # source side: never write back. Cure = commit F: source, then -Push.
                 Add-Issue 'rules' 'ERROR' 'RulesCopyDrift' "$cp (repo source) body differs from the rules group body (group source: $src); NOT auto-fixable by design - commit the repo source, then run sync-rules.ps1 -Push" $false -LinkPath $cp -ExpectedDir $src
             } else {
-                Add-Issue 'rules' 'ERROR' 'RulesCopyDrift' "$cp body differs from the rules group body (group source: $src); -Fix resyncs the copy while keeping its own header comment" $true -LinkPath $cp -ExpectedDir $src
+                $cmpSrc = $src
+                if ($bodySrc) { $cmpSrc = $bodySrc }
+                Add-Issue 'rules' 'ERROR' 'RulesCopyDrift' "$cp body differs from its body source (source: $cmpSrc); -Fix resyncs the copy while keeping its own header comment" $true -LinkPath $cp -ExpectedDir $cmpSrc
             }
         }
     }
@@ -329,7 +352,10 @@ function Fix-RulesCopy {
     }
     $src = Get-RulesGroupSource $Cfg
     if (-not $src) { return $false }
-    $srcText = Get-RulesCoreText -Path $src -StripHeaderComment $true
+    $bodySrc = Get-CopyBodySource -Cfg $Cfg -CopyPath $CopyPath
+    $srcText = $null
+    if ($bodySrc) { $srcText = Get-RulesCoreText -Path $bodySrc -StripHeaderComment $true }
+    if (-not $srcText) { $srcText = Get-RulesCoreText -Path $src -StripHeaderComment $true }
     $front = ''
     $header = ''
     $cpText = [IO.File]::ReadAllText($CopyPath)
