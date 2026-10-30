@@ -203,6 +203,26 @@ function Test-AgentLinks {
     }
 }
 
+# ---------- check 15: skill dirs must not be empty (silent-green trap) ----------
+# 2026-10-30 事故：F 仓库多个技能目录被清空，但各处 junction 仍指向它们 ——
+# 链接检查全绿、frontmatter 扫描因找不到 SKILL.md 也不报错，空目录静默了一整天。
+# 本检查只做一件事：仓库顶层每个目录（排除 excludeDirs、点开头、daily-report-panel*）
+# 递归 0 文件即 ERROR —— 任何"内容被清空"的意外第一时间变红，而不是等人工发现。
+function Test-SkillDirsNonEmpty {
+    param([object]$Cfg)
+    $excl = @($Cfg.excludeDirs)
+    Get-ChildItem -LiteralPath $Cfg.repo -Directory -Force -ErrorAction SilentlyContinue | ForEach-Object {
+        $name = $_.Name
+        if ($name.StartsWith('.')) { return }
+        if ($excl -contains $name) { return }
+        if ($name -like 'daily-report-panel*') { return }
+        $n = @(Get-ChildItem $_.FullName -Recurse -File -Force -ErrorAction SilentlyContinue).Count
+        if ($n -eq 0) {
+            Add-Issue 'repo' 'ERROR' 'SkillDirEmpty' ("技能目录为空: " + $_.FullName + " —— 内容被清空或链接悬空，先用 X:\备份\skills-*.zip 或各仓 GitHub 远端恢复") $false
+        }
+    }
+}
+
 # ---------- check 3: global rules hardlink group ----------
 # Pure-cmdlet implementation: PS 5.1 (Get-Item).Target on a HardLink file returns
 # a List<string> of the OTHER paths in the same hardlink group. No fsutil, no
@@ -2289,6 +2309,7 @@ function Invoke-AllChecks {
             Test-AgentLinks -Agent $a -Expected $Expected -Repo $Cfg.repo -RedlineDirs @($Cfg.redlineDirs)
         }
     }
+    Test-SkillDirsNonEmpty $Cfg
     Test-RulesHardlink $Cfg
     Test-RulesManualCopy $Cfg
     Test-SshMcpJunction $Cfg
