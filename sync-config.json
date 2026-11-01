@@ -1,15 +1,74 @@
 {
   "repo": "F:\\idea-workspase-skills",
-  "excludeDirs": [".idea", "scripts", ".system", "logs", ".zcode", ".dsh", ".claude", ".codex", ".qoder-cn", "daily-report-panel", "node_modules"],
+  "excludeDirs": [
+    ".idea",
+    "scripts",
+    ".system",
+    "logs",
+    ".zcode",
+    ".dsh",
+    ".claude",
+    ".codex",
+    ".qoder-cn",
+    "daily-report-panel",
+    "node_modules"
+  ],
   "agents": [
-    { "name": "claude", "label": "Claude Code", "home": "C:\\Users\\Administrator\\.claude", "rulesFile": "CLAUDE.md", "skillsEnabled": true },
-    { "name": "dsh",    "label": "DeepSeek Harness", "home": "C:\\Users\\Administrator\\.dsh",    "rulesFile": "AGENTS.md", "skillsEnabled": true },
-    { "name": "codex",  "label": "Codex",       "home": "C:\\Users\\Administrator\\.codex",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
-    { "name": "zcode",  "label": "Zcode",       "home": "C:\\Users\\Administrator\\.zcode",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
-    { "name": "qoder",  "label": "Qoder CN",    "home": "C:\\Users\\Administrator\\.qoder-cn",  "rulesFile": "AGENTS.md", "skillsEnabled": true },
-    { "name": "minimax", "label": "MiniMax Code", "home": "C:\\Users\\Administrator\\.minimax", "rulesFile": "AGENTS.md", "skillsEnabled": false },
-    { "name": "opencode", "label": "OpenCode", "home": "C:\\Users\\Administrator\\.config\\opencode", "rulesFile": "AGENTS.md", "skillsEnabled": false },
-    { "name": "workbuddy", "label": "WorkBuddy", "home": "C:\\Users\\Administrator\\.workbuddy", "skillsEnabled": false }
+    {
+      "name": "claude",
+      "label": "Claude Code",
+      "home": "C:\\Users\\Administrator\\.claude",
+      "rulesFile": "CLAUDE.md",
+      "skillsEnabled": true
+    },
+    {
+      "name": "dsh",
+      "label": "DeepSeek Harness",
+      "home": "C:\\Users\\Administrator\\.dsh",
+      "rulesFile": "AGENTS.md",
+      "skillsEnabled": true
+    },
+    {
+      "name": "codex",
+      "label": "Codex",
+      "home": "C:\\Users\\Administrator\\.codex",
+      "rulesFile": "AGENTS.md",
+      "skillsEnabled": true
+    },
+    {
+      "name": "zcode",
+      "label": "Zcode",
+      "home": "C:\\Users\\Administrator\\.zcode",
+      "rulesFile": "AGENTS.md",
+      "skillsEnabled": true
+    },
+    {
+      "name": "qoder",
+      "label": "Qoder CN",
+      "home": "C:\\Users\\Administrator\\.qoder-cn",
+      "rulesFile": "AGENTS.md",
+      "skillsEnabled": true
+    },
+    {
+      "name": "minimax",
+      "label": "MiniMax Code",
+      "home": "C:\\Users\\Administrator\\.minimax",
+      "rulesFile": "AGENTS.md",
+      "skillsEnabled": false
+    },
+    {
+      "name": "opencode",
+      "label": "OpenCode",
+      "home": "C:\\Users\\Administrator\\.config\\opencode",
+      "rulesFile": "AGENTS.md",
+      "skillsEnabled": false
+    },
+    {
+      "name": "workbuddy",
+      "label": "WorkBuddy",
+      "home": "C:\\Users\\Administrator\\.workbuddy",
+      "skillsEnabled": false
+    }
   ],
   "rulesHardlink": {
     "enabled": true,
@@ -40,7 +99,14 @@
     "mode": "gateway",
     "sourceDir": "F:\\idea-workspase-skills\\agent-config-sync-check\\assets\\ssh-mcp",
     "configFileName": "ssh-mcp-config.toml",
-    "junctionEnds": ["claude", "dsh", "codex", "zcode", "qoder", "opencode"],
+    "junctionEnds": [
+      "claude",
+      "dsh",
+      "codex",
+      "zcode",
+      "qoder",
+      "opencode"
+    ],
     "registration": {
       "serverName": "ssh",
       "command": "node",
@@ -49,9 +115,25 @@
       "pythonPath": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
       "yamlModulePath": "C:\\Users\\Administrator\\node_global\\node_modules\\@deepseek-ai\\dsh\\node_modules\\yaml",
       "ends": {
-        "claude": { "type": "claude-json", "file": "C:\\Users\\Administrator\\.claude.json", "configPath": "C:/Users/Administrator/.claude/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.claude/ssh-mcp/launcher.js", "fixable": true },
-        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "configPath": "C:/Users/Administrator/.dsh/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.dsh/ssh-mcp/launcher.js" },
-        "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml", "configPath": "C:/Users/Administrator/.codex/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.codex/ssh-mcp/launcher.js" },
+        "claude": {
+          "type": "claude-json",
+          "file": "C:\\Users\\Administrator\\.claude.json",
+          "configPath": "C:/Users/Administrator/.claude/ssh-mcp/ssh-mcp-config.toml",
+          "launcherPath": "C:/Users/Administrator/.claude/ssh-mcp/launcher.js",
+          "fixable": true
+        },
+        "dsh": {
+          "type": "dsh-patch",
+          "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml",
+          "configPath": "C:/Users/Administrator/.dsh/ssh-mcp/ssh-mcp-config.toml",
+          "launcherPath": "C:/Users/Administrator/.dsh/ssh-mcp/launcher.js"
+        },
+        "codex": {
+          "type": "codex-toml",
+          "file": "C:\\Users\\Administrator\\.codex\\config.toml",
+          "configPath": "C:/Users/Administrator/.codex/ssh-mcp/ssh-mcp-config.toml",
+          "launcherPath": "C:/Users/Administrator/.codex/ssh-mcp/launcher.js"
+        },
         "zcodeProject": {
           "type": "zcode-project-json",
           "projects": [
@@ -71,8 +153,21 @@
           ],
           "fixable": true
         },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json", "configPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/launcher.js", "fixable": true },
-        "opencode": { "type": "opencode-json", "file": "C:\\Users\\Administrator\\.config\\opencode\\opencode.jsonc", "configPath": "C:/Users/Administrator/.config/opencode/ssh-mcp/ssh-mcp-config.toml", "launcherPath": "C:/Users/Administrator/.config/opencode/ssh-mcp/launcher.js", "command": "F:/nvm/v22.20.0/node.exe", "fixable": true }
+        "qoder": {
+          "type": "qoder-json",
+          "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json",
+          "configPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/ssh-mcp-config.toml",
+          "launcherPath": "C:/Users/Administrator/.qoder-cn/ssh-mcp/launcher.js",
+          "fixable": true
+        },
+        "opencode": {
+          "type": "opencode-json",
+          "file": "C:\\Users\\Administrator\\.config\\opencode\\opencode.jsonc",
+          "configPath": "C:/Users/Administrator/.config/opencode/ssh-mcp/ssh-mcp-config.toml",
+          "launcherPath": "C:/Users/Administrator/.config/opencode/ssh-mcp/launcher.js",
+          "command": "F:/nvm/v22.20.0/node.exe",
+          "fixable": true
+        }
       }
     }
   },
@@ -86,14 +181,34 @@
         "args": [
           "F:/idea-workspase-skills/daily-report-panel/mcp-gateway/src/stdio-bridge.js",
           "--url",
-          "http://127.0.0.1:18800/mcp"
+          "http://127.0.0.1:18801/mcp"
         ],
-        "dsh": { "type": "dsh-patch", "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml", "id": "mcp-gateway", "clientName": "@deepseek-ai/dsh-mcp-client" },
-        "codex": { "type": "codex-toml", "file": "C:\\Users\\Administrator\\.codex\\config.toml" },
-        "zcode": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json" },
-        "zcodeCli": { "type": "zcode-json", "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json" },
-        "qoder": { "type": "qoder-json", "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json" },
-        "opencode": { "type": "opencode-json", "file": "C:\\Users\\Administrator\\.config\\opencode\\opencode.jsonc" }
+        "dsh": {
+          "type": "dsh-patch",
+          "file": "C:\\Users\\Administrator\\.dsh\\profiles\\web\\cordis.patch.yml",
+          "id": "mcp-gateway",
+          "clientName": "@deepseek-ai/dsh-mcp-client"
+        },
+        "codex": {
+          "type": "codex-toml",
+          "file": "C:\\Users\\Administrator\\.codex\\config.toml"
+        },
+        "zcode": {
+          "type": "zcode-json",
+          "file": "C:\\Users\\Administrator\\.zcode\\cli\\config.json"
+        },
+        "zcodeCli": {
+          "type": "zcode-json",
+          "file": "C:\\Users\\Administrator\\.zcode\\cli\\setting.json"
+        },
+        "qoder": {
+          "type": "qoder-json",
+          "file": "C:\\Users\\Administrator\\.qoder-cn\\mcp.json"
+        },
+        "opencode": {
+          "type": "opencode-json",
+          "file": "C:\\Users\\Administrator\\.config\\opencode\\opencode.jsonc"
+        }
       }
     ],
     "pythonPath": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
@@ -105,7 +220,16 @@
       "file": "C:\\Users\\Administrator\\.claude\\settings.json",
       "section": "hooks"
     },
-    "supportedEvents": ["SessionStart", "UserPromptSubmit", "PreToolUse", "PermissionRequest", "PostToolUse", "PostToolUseFailure", "Stop", "SessionEnd"],
+    "supportedEvents": [
+      "SessionStart",
+      "UserPromptSubmit",
+      "PreToolUse",
+      "PermissionRequest",
+      "PostToolUse",
+      "PostToolUseFailure",
+      "Stop",
+      "SessionEnd"
+    ],
     "ends": {
       "zcode": {
         "enabled": true,
@@ -114,11 +238,20 @@
         "fixable": true,
         "preferredType": "process",
         "bashCommand": "F:/Program Files (x86)/Git/usr/bin/bash.exe",
-        "dropEvents": ["SessionEnd"],
-        "dropToolsInMatcher": ["MultiEdit"],
-        "excludeCommandPatterns": ["rtk hook claude"],
+        "dropEvents": [
+          "SessionEnd"
+        ],
+        "dropToolsInMatcher": [
+          "MultiEdit"
+        ],
+        "excludeCommandPatterns": [
+          "rtk hook claude"
+        ],
         "rewrite": [
-          { "match": "--source=claude", "replace": "--source=zcode" }
+          {
+            "match": "--source=claude",
+            "replace": "--source=zcode"
+          }
         ]
       },
       "codex": {
@@ -126,8 +259,17 @@
         "type": "codex-toml-hooks",
         "file": "C:\\Users\\Administrator\\.codex\\config.toml",
         "fixable": false,
-        "dropEvents": ["SessionEnd", "Stop"],
-        "excludeCommandPatterns": ["rtk hook claude", "guard-memory-write.sh", "guard-memory-approved.sh", "warn-download-location.sh", "notify.cjs"]
+        "dropEvents": [
+          "SessionEnd",
+          "Stop"
+        ],
+        "excludeCommandPatterns": [
+          "rtk hook claude",
+          "guard-memory-write.sh",
+          "guard-memory-approved.sh",
+          "warn-download-location.sh",
+          "notify.cjs"
+        ]
       },
       "qoder": {
         "enabled": true,
@@ -138,9 +280,15 @@
         "bashCommand": "F:/Program Files (x86)/Git/usr/bin/bash.exe",
         "dropEvents": [],
         "dropToolsInMatcher": [],
-        "excludeCommandPatterns": ["rtk hook claude", "notify.cjs"],
+        "excludeCommandPatterns": [
+          "rtk hook claude",
+          "notify.cjs"
+        ],
         "rewrite": [
-          { "match": "--source=claude", "replace": "--source=qoder" }
+          {
+            "match": "--source=claude",
+            "replace": "--source=qoder"
+          }
         ]
       }
     }
@@ -195,13 +343,20 @@
     "prd": "PRD 生成器（一句话需求→结构化需求文档）",
     "ralph": "PRD 转 prd.json（Ralph 自主执行格式）"
   },
-  "redlineDirs": ["coding-rules"],
+  "redlineDirs": [
+    "coding-rules"
+  ],
   "docsHistory": {
     "_comment": "check 14: spec docs state current facts only; record docs declare themselves. Type is read from the doc itself, never inferred from path or file name.",
     "enabled": true,
     "level": "WARN",
     "recordMarker": "文档类型: 记录",
-    "skipDirs": ["logs", "node_modules", "__pycache__", ".venv"],
+    "skipDirs": [
+      "logs",
+      "node_modules",
+      "__pycache__",
+      ".venv"
+    ],
     "noisePatterns": [
       "实踩",
       "踩过",
