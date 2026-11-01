@@ -9,13 +9,15 @@
 >
 > **CodeBuddy 端已随 CodeBuddy CN 卸载退出 hooksSync（2026-10-10 接入 → 2026-10-21 退出）**：当年落点 `~\.codebuddy\settings.json` 的 `hooks` 组（Claude Code 同构），复用 Qoder 的转换管线（process 型、去 MultiEdit、`--source=codebuddy` 改写、排除 tokentracker/notify.cjs——它有自带的 `--source=codebuddy` 采集注册），-Fix 经 `register-codebuddy-hooks.js` 幂等 upsert（按脚本路径原位替换、清理同脚本历史重复条目，自动备份+写后复验；用户自加 hooks 不动）。该脚本与 `codebuddy-json-hooks` 处理器分支已于 2026-10-21 一并删除，不留复活路径。
 
+> **各端档位现状**：ZCode 主力；Claude Code + DeepSeek Harness 辅档；Qoder + Codex 闲置档（注册与脚本仍在、机制照常生效，日常不作主战场）。防护能力改造按档位投入：主/辅档全量跟进，闲置档维持现状（如 Codex 记忆守卫的 deny 保守版）。
+
 ## 能力对照表
 
 | 防护能力 | Claude Code | DeepSeek Harness | Codex | Zcode | Qoder |
 |---|---|---|---|---|---|
 | 危险 git 拦截（push --force、reset --hard、add . 等） | `block-dangerous-git.sh`（deny，正则） | 内置基线 ask（push --force / reset --hard）+ `rules.yaml` 6 条 deny（clean / branch -D / checkout . / restore . / add 全量） | `block-dangerous-git.sh`（同脚本） | 同 Claude | 同脚本（hooksSync 自动同步） |
 | 危险 bash 拦截（rd /s、format、diskpart、rm -rf /、curl\|sh 等） | `guard-dangerous-bash.sh` | `rules.yaml` Windows 段 8 条 deny + 内置基线（mkfs/dd/chmod 777/fork bomb/curl\|sh/敏感路径 ask） | 同脚本（Codex 格式适配） | 同 Claude | 同脚本 |
-| 记忆守卫（memory/ 分层 + 命名校验 + 台账） | `guard-memory-write.sh` + `guard-memory-approved.sh` | 无 memory 机制（文件沙箱 + AGENTS.md 约定兜底） | `guard-memory-write-codex.sh` + `guard-memory-approved-codex.sh`（apply_patch 适配版） | 同 Claude | 同 Claude（直引 `~\.claude\hooks\` 脚本） |
+| 记忆守卫（memory/ 分层 + 会话信任 + 命名校验 + 台账） | `guard-memory-write.sh` + `guard-memory-approved.sh`（memory/ 每会话首次 ask、批准后本会话放行） | 无 memory 机制（文件沙箱 + AGENTS.md 约定兜底） | `guard-memory-write-codex.sh` + `guard-memory-approved-codex.sh`（apply_patch 适配版；memory/ 一律 deny 保守版，未跟会话信任） | 同 Claude | 同 Claude（直引 `~\.claude\hooks\` 脚本） |
 | 下载位置提醒 | `warn-download-location.sh` | 无（AGENTS.md 文字约定） | 无 | 同 Claude | 同 Claude |
 | 任务完成通知 | tokentracker（Stop/SessionEnd） | `dsh-notification` 插件（桌面通知） | tokentracker（`notify` 配置） | tokentracker（Stop，`--source=zcode`） | 无（hooksSync 排除 tokentracker，停止无效采集） |
 | 提示注入/密钥泄露检测 | 无 | `dsh-defend` 插件（消息/工具参数/工具结果三道闸） | 无 | 无 | 无 |
@@ -89,3 +91,5 @@
 # 解释器钉死自检：Qoder settings.json 里每条 .sh 钩子应为
 #   "F:/Program Files (x86)/Git/usr/bin/bash.exe" "C:/Users/Administrator/.claude/hooks/xxx.sh"
 ```
+
+最后修改：2026-11-01
