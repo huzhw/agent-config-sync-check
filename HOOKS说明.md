@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|
 | 危险 git 拦截（push --force、reset --hard、add . 等） | `block-dangerous-git.sh`（deny，正则） | 内置基线 ask（push --force / reset --hard）+ `rules.yaml` 6 条 deny（clean / branch -D / checkout . / restore . / add 全量） | `block-dangerous-git.sh`（同脚本） | 同 Claude | 同脚本（hooksSync 自动同步） |
 | 危险 bash 拦截（rd /s、format、diskpart、rm -rf /、curl\|sh 等） | `guard-dangerous-bash.sh` | `rules.yaml` Windows 段 8 条 deny + 内置基线（mkfs/dd/chmod 777/fork bomb/curl\|sh/敏感路径 ask）+ cc-safety-net deny-only 尾闸（语义解析，跑在全部 tools/pre-execute 监听之后；web + headless 双 profile）+ **自研 rm 插件 dsh-rm-quarantine**（递归删除 → 移入 X:/隔离区 再拒，与主力端同语义） | 同脚本（Codex 格式适配） | 同 Claude | 同脚本 |
-| 记忆守卫（memory/ 分层 + 会话信任 + 命名校验 + 台账） | `guard-memory-write.sh` + `guard-memory-approved.sh`（memory/ 每会话首次 ask、批准后本会话放行） | 无专门记忆守卫（工作区默认放行；机密路径由 cc-safety-net 与内置基线管） | `guard-memory-write-codex.sh` + `guard-memory-approved-codex.sh`（apply_patch 适配版；memory/ 一律 deny 保守版，未跟会话信任） | 同 Claude | 同 Claude（直引 `~\.claude\hooks\` 脚本） |
+| 记忆守卫（memory/ 分层 + 会话信任 + 命名校验 + 台账） | `guard-memory-write.sh` + `guard-memory-approved.sh`（memory/ 现有文件每会话首次 ask、批准后本会话放行；**新建文件每次都 ask、须架构师指定**） | 无专门记忆守卫（工作区默认放行；机密路径由 cc-safety-net 与内置基线管） | `guard-memory-write-codex.sh` + `guard-memory-approved-codex.sh`（apply_patch 适配版；memory/ 一律 deny 保守版，未跟会话信任） | 同 Claude | 同 Claude（直引 `~\.claude\hooks\` 脚本） |
 | 下载位置提醒 | `warn-download-location.sh` | 无（AGENTS.md 文字约定） | 无 | 同 Claude | 同 Claude |
 | 任务完成通知 | tokentracker（Stop/SessionEnd） | `dsh-notification` 插件（桌面通知） | tokentracker（`notify` 配置） | tokentracker（Stop，`--source=zcode`） | 无（hooksSync 排除 tokentracker，停止无效采集） |
 | 提示注入/密钥泄露检测 | 无 | `dsh-defend` 插件（消息/工具参数/工具结果三道闸） | 无 | 无 | 无 |
