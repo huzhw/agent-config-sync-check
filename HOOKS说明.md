@@ -16,7 +16,7 @@
 | 防护能力 | Claude Code | DeepSeek Harness | Codex | Zcode | Qoder |
 |---|---|---|---|---|---|
 | 危险 git 拦截（push --force、reset --hard、add . 等） | `block-dangerous-git.sh`（deny，正则） | 内置基线 ask（push --force / reset --hard）+ `rules.yaml` 6 条 deny（clean / branch -D / checkout . / restore . / add 全量） | `block-dangerous-git.sh`（同脚本） | 同 Claude | 同脚本（hooksSync 自动同步） |
-| 危险 bash 拦截（rd /s、format、diskpart、rm -rf /、curl\|sh 等） | `guard-dangerous-bash.sh` | `rules.yaml` Windows 段 8 条 deny + 内置基线（mkfs/dd/chmod 777/fork bomb/curl\|sh/敏感路径 ask）+ cc-safety-net deny-only 尾闸（语义解析，跑在全部 tools/pre-execute 监听之后；web + headless 双 profile） | 同脚本（Codex 格式适配） | 同 Claude | 同脚本 |
+| 危险 bash 拦截（rd /s、format、diskpart、rm -rf /、curl\|sh 等） | `guard-dangerous-bash.sh` | `rules.yaml` Windows 段 8 条 deny + 内置基线（mkfs/dd/chmod 777/fork bomb/curl\|sh/敏感路径 ask）+ cc-safety-net deny-only 尾闸（语义解析，跑在全部 tools/pre-execute 监听之后；web + headless 双 profile）+ **自研 rm 插件 dsh-rm-quarantine**（递归删除 → 移入 X:/隔离区 再拒，与主力端同语义） | 同脚本（Codex 格式适配） | 同 Claude | 同脚本 |
 | 记忆守卫（memory/ 分层 + 会话信任 + 命名校验 + 台账） | `guard-memory-write.sh` + `guard-memory-approved.sh`（memory/ 每会话首次 ask、批准后本会话放行） | 无专门记忆守卫（工作区默认放行；机密路径由 cc-safety-net 与内置基线管） | `guard-memory-write-codex.sh` + `guard-memory-approved-codex.sh`（apply_patch 适配版；memory/ 一律 deny 保守版，未跟会话信任） | 同 Claude | 同 Claude（直引 `~\.claude\hooks\` 脚本） |
 | 下载位置提醒 | `warn-download-location.sh` | 无（AGENTS.md 文字约定） | 无 | 同 Claude | 同 Claude |
 | 任务完成通知 | tokentracker（Stop/SessionEnd） | `dsh-notification` 插件（桌面通知） | tokentracker（`notify` 配置） | tokentracker（Stop，`--source=zcode`） | 无（hooksSync 排除 tokentracker，停止无效采集） |
@@ -41,6 +41,7 @@
 |---|---|
 | `dsh-permission-rules` | 声明式 allow/deny/ask 规则（工具名/参数/路径/网络维度，argv 分解精确匹配）、内置高风险基线、进程级网络策略代理、HMR 热重载、`/rules list` `/rules test` 命令 |
 | `cc-safety-net`（第三方） | 预执行尾闸：破坏性 git/文件系统命令、远程管道执行（连 `bash -c`/`python -c` 内嵌都识别）、机密文件（SSH 密钥/.env/凭证，shell 与文件工具双覆盖）deny-only 拦截；跑在全部 tools/pre-execute 监听之后；web + headless 双 profile |
+| `dsh-rm-quarantine`（自研，`F:\idea-workspase-skills\dsh-rm-quarantine`） | 递归删除隔离：项目内非白名单递归删除（`rm -r` / `Remove-Item -Recurse` / `rd /s`，含 pwsh 别名；DSH 实际 shell 工具是 dsh-ops 的 `ops_bash`，Windows 上顶替官方 pwsh）→ 移入 `X:/隔离区` 后拒（14 天自动清 + 容量上限）；白名单/临时区放行；系统/上级/通配/链接穿透拒。注册在 `dsh.profile.bundles` 首位（先于 permission-rules），web + headless 双 profile |
 | `dsh-auto-review` | ask 类的第二模型 AI 自动审查（只读审查 subagent 决定 allow/deny，fail-closed，审计留痕） |
 | `dsh-defend` | 提示注入/越狱/密钥泄露检测（Aho-Corasick 引擎），消息、工具参数、工具结果三道闸，`defend_report` 工具 + `/defend` 命令 |
 | `dsh-notification` | 回合结束桌面通知（按结果开关 + 关键词过滤） |
