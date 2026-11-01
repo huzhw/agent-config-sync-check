@@ -324,7 +324,8 @@
     "dev-env-upgrade": "dev-env-upgrade",
     "coding-rules": "coding-rules",
     "prd": "prd-skill",
-    "ralph": "ralph-skill"
+    "ralph": "ralph-skill",
+    "ssh-transfer": "ssh-transfer"
   },
   "repoRoots": {
     "git-commit": "F:\\idea-workspase-skills\\claude-git-commit-skill"
@@ -343,7 +344,8 @@
     "dev-env-upgrade": "开发环境升级医生：版本体检/最新版查询/安全升级",
     "coding-rules": "编码规则库（独立仓库，非 skill）",
     "prd": "PRD 生成器（一句话需求→结构化需求文档）",
-    "ralph": "PRD 转 prd.json（Ralph 自主执行格式）"
+    "ralph": "PRD 转 prd.json（Ralph 自主执行格式）",
+    "ssh-transfer": "服务器传文件走命令行（scp/sftp 流式，字节不进模型上下文）"
   },
   "redlineDirs": [
     "coding-rules"
