@@ -25,7 +25,7 @@
 
 **多端 Junction 架构下（当前 8 端，MiniMax Code 仅接规则硬链接组、OpenCode 仅接规则硬链接组、WorkBuddy 仅接规则手工副本，均不挂技能），同步坏了没有任何报警。** 技能目录删了链接悬空、新增 skill 忘挂某端、规则文件被编辑器"另存"成独立副本（硬链接组断裂，改一端其他三端不跟）、README 技能列表过期——这些全是静默故障，等到用的时候才发现技能不见了。这个技能把各端状态一遍扫完，机械性问题自动修，分叉问题报给人。
 
-## 检查项（13 条）
+## 检查项（14 条）
 
 | # | 检查项 | 内容 |
 |---|--------|------|
@@ -42,6 +42,7 @@
 | 11 | 通用 MCP 同步 | `sync-config.json` 的 `mcpSync.servers` 登记的 MCP 各端 command+args 解析级比对（node YAML / python tomllib / JSON，共享 insert 块也能识别）；支持 `perEndCommand`/`perEndArgsPrepend`/`perEndArgs` 按端覆盖（比对与修复都按生效值）；Claude 端 `.claude.json` 只读检查不自动写；缺失/漂移 -Fix 自动补齐重写；env 不跨端，带敏感值的学 ssh 用 launcher；http 型（idea）暂不支持；**2026-10-27 起只登记一条 `mcp-gateway`**（stdio 桥 → 常驻网关 127.0.0.1:18800，内部才是 codegraph/dbx/context7 三个后端；详见 `daily-report-panel\mcp-gateway\`，面板「扩展中心 → MCP 网关」看状态），原来那三条已撤表并用 `prune-legacy-mcp.mjs` 清掉旧登记，别再逐端注册；ZCode 分两端登记：`zcode`（客户端）落 `.zcode\cli\config.json`、`zcodeCli`（命令行）落 `.zcode\cli\setting.json`，两文件不互相同步；**OpenCode 端类型 `opencode-json`**（2026-10-21 接入）：opencode 把 exe 与参数写在一个 `command` 数组里，故用端级覆盖钉绝对 `node.exe` 并前置 `npm-shim.js`／`bin/*.js`（opencode 直接 spawn 不过 shell，裸命令与 `.cmd` shim 起不来）；写回脚本遇文件内 `//`、`/* */` 注释会拒绝重写（JSON 序列化会吞注释） |
 | 12 | 防护 hooks 同步 | 源 = `~\.claude\settings.json` hooks 段；ZCode 落点 `~\.zcode\cli\config.json` 的 `hooks.events`（runner 须 `enabled: true`），经 `hooks-convert.js` 转换（丢 SessionEnd、去 MultiEdit、`--source=zcode` 改写、shell 串拆 process 型）；缺失/漂移 -Fix 幂等合并；Qoder CN（`~\.qoder-cn`，2026-10-11 换端）落点 `settings.json` 的 hooks 组（与 Claude 同构，`--source=qoder` 改写、排除 tokentracker）；Codex 端只报告（trusted_hash 机制不可自动改写） |
 | 13 | 规则手工副本 | 跨卷/异机制副本登记在 `rulesHardlink.manualCopies`：`coding-rules\CLAUDE.md`（F 盘进不了硬链接组）；WorkBuddy 用户级记忆 `~\.workbuddy\user-<id>-personal\MEMORY.md`（2026-10-11 接入，需专属头注释且有每会话约 4000 字符上限）：剥掉副本自身开头 `<!-- -->` 头注释后正文须与组正文一致；漂移 -Fix 自动重写（保留其头注释），副本整份丢失不自动修（要先写身份头注释） |
+| 14 | PATH 垫片 | `%USERPROFILE%\.local\bin` 里的 `mvninfo.cmd` / `envcheck.cmd` / `fsend.cmd` 必须是指向仓内真身的符号链接（表登记在 `pathShims`，跨卷只能符号链接，硬链接报"系统无法将文件移到不同的磁盘驱动器"）；缺失、指向错、被"替换写"变成普通拷贝都报错，`-Fix` 交给 `install-shims.ps1` 修（旧拷贝先备份成 `.bak-<时间戳>`，建链前用探针验权限） |
 
 `.zcode` 里的中转链接（→ `.claude` 官方技能、→ `.codex\.system` 系统技能）只验"上游还在"，上游删了报死链，**只报告不自动修**。
 
@@ -84,6 +85,7 @@ agent-config-sync-check/
 ├── logs/                 ← 检查日志（不入 git）
 └── scripts/
     ├── sync-check.ps1    ← 检查/修复核心脚本（PS 5.1 兼容，源码纯 ASCII 零密码）
+    ├── install-shims.ps1 ← PATH 垫片体检/重建（读 sync-config.json 的 pathShims，默认只读，-Apply 才写）
     ├── ssh-claude-register.js← -Fix 专用：Claude 端 ssh 注册重写为 launcher 形态
     ├── register-zcode.js     ← -Fix 专用：ZCode 端 mcp.servers 注册写入（客户端 config.json 与 CLI setting.json 通用；整文件重写，键序按插入序保留，只动目标子树）
     ├── register-zcode-hooks.js ← -Fix 专用：ZCode `hooks` 段幂等合并（process 型数组参数、备份+复验）

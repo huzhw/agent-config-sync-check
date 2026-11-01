@@ -18,6 +18,7 @@
     4. SKILL.md frontmatter sanity (name/description, kebab-case)
     5. Repo root README skill-list section (BEGIN/END marks, auto-maintained)
     6. Redline dirs (coding-rules must never be linked)
+    7. PATH shims (.local\bin .cmd wrappers are symlinks into the repo; table = pathShims)
   Runtime: Windows PowerShell 5.1 compatible (no pwsh 7 on this box; junctions via mklink /J).
   IMPORTANT: this script source is ASCII-only ON PURPOSE. The host is PS 5.1 and
   editors may save files as UTF-8 WITHOUT BOM, which 5.1 decodes as ANSI - any
@@ -448,6 +449,83 @@ function Repair-RulesHardlinkGroup {
     } else {
         Write-Host "  [OK] hardlink group already intact (hash-verified)" -ForegroundColor Green
     }
+}
+
+# ---------- check 14: PATH shims (pathShims) ----------
+# .local\bin holds the .cmd wrappers (mvninfo / envcheck / fsend). Each must be a
+# symlink into the repo: a plain copy still runs, but silently stops following the
+# repo (saving over the link replaces it with a file). The table lives in
+# sync-config.json (pathShims) so this check and install-shims.ps1 read one list.
+# All writes stay in install-shims.ps1 - this file only detects.
+
+function Expand-PathToken {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return '' }
+    if ($Path.StartsWith('%USERPROFILE%')) {
+        return $env:USERPROFILE + $Path.Substring('%USERPROFILE%'.Length)
+    }
+    return $Path
+}
+
+function Test-SamePathText {
+    param([string]$A, [string]$B)
+    if ([string]::IsNullOrWhiteSpace($A) -or [string]::IsNullOrWhiteSpace($B)) { return $false }
+    return (Normalize-Path (Expand-PathToken $A)) -eq (Normalize-Path (Expand-PathToken $B))
+}
+
+function Test-PathShims {
+    param([object]$Cfg)
+
+    $ps = $Cfg.pathShims
+    if (-not $ps) { return }
+    if ($ps.PSObject.Properties['enabled'] -and -not $ps.enabled) { return }
+
+    $bin = Expand-PathToken ([string]$ps.binDir)
+    foreach ($it in @($ps.items)) {
+        $name = [string]$it.name
+        if ([string]::IsNullOrWhiteSpace($name)) { continue }
+        $target = Expand-PathToken ([string]$it.target)
+        $lp = Join-Path $bin $name
+        if (-not (Test-Path -LiteralPath $lp)) {
+            Add-Issue 'shims' 'ERROR' 'ShimMissing' ("{0} does not exist (PATH shim -> {1}); repair with install-shims.ps1 -Apply" -f $lp, $target) $true -LinkName $name -LinkPath $lp -ExpectedDir $target
+            continue
+        }
+        $item = Get-Item -LiteralPath $lp -Force
+        if ($item.LinkType -in @('SymbolicLink', 'Junction')) {
+            $cur = @($item.Target) | Select-Object -First 1
+            if (-not (Test-SamePathText $cur $target)) {
+                Add-Issue 'shims' 'ERROR' 'ShimWrongTarget' ("{0} -> {1} (expected {2}); repair with install-shims.ps1 -Apply" -f $lp, $cur, $target) $true -LinkName $name -LinkPath $lp -ExpectedDir $target
+            }
+        }
+        else {
+            Add-Issue 'shims' 'ERROR' 'ShimPlainCopy' ("{0} is a plain copy, not a symlink (a save replaced the link, so it no longer follows {1}); repair with install-shims.ps1 -Apply" -f $lp, $target) $true -LinkName $name -LinkPath $lp -ExpectedDir $target
+        }
+    }
+}
+
+# One repairer for the whole shim group: install-shims.ps1 (probe + backup + verify).
+function Invoke-ShimRepair {
+    param([string]$CfgPath)
+
+    $helper = Join-Path $script:ScriptDir 'install-shims.ps1'
+    if (-not (Test-Path -LiteralPath $helper)) {
+        Write-Host "  [FIX FAILED] shims: install-shims.ps1 not found at $helper"
+        return
+    }
+    $cliArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $helper, '-Apply')
+    if ($CfgPath) { $cliArgs += @('-ConfigPath', $CfgPath) }
+    $out = & powershell @cliArgs 2>&1
+    $text = ($out | Out-String)
+    foreach ($line in ($text -split "`r?`n")) {
+        if ($line.Trim()) { Write-Host "  $line" }
+    }
+    $m = [regex]::Match($text, 'repaired (\d+), failed (\d+)')
+    if (-not $m.Success) {
+        Write-Host '  [FIX FAILED] shims: could not read install-shims.ps1 result'
+        return
+    }
+    $script:Fixed += [int]$m.Groups[1].Value
+    if ([int]$m.Groups[2].Value -gt 0) { Write-Host "  [FIX FAILED] shims: $($m.Groups[2].Value) shim(s) still broken" }
 }
 
 # ---------- checks 9 + 10: ssh-mcp config junctions + per-end registration ----------
@@ -2044,8 +2122,14 @@ function Fix-ReadmeSection {
 function Apply-Fixes {
     param([object]$Cfg, [hashtable]$Expected)
 
+    # PATH shims: one repairer owns every write (install-shims.ps1), so handle the
+    # whole group once instead of going through the per-issue switch below.
+    $shimIssues = @($Issues | Where-Object { $_.Agent -eq 'shims' -and $_.Fixable })
+    if ($shimIssues.Count -gt 0) { Invoke-ShimRepair -CfgPath $ConfigPath }
+
     foreach ($iss in $Issues.ToArray()) {
         if (-not $iss.Fixable) { continue }
+        if ($iss.Agent -eq 'shims') { continue }
         try {
             switch ($iss.Type) {
                 'MissingLink' {
@@ -2312,6 +2396,7 @@ function Invoke-AllChecks {
     Test-SkillDirsNonEmpty $Cfg
     Test-RulesHardlink $Cfg
     Test-RulesManualCopy $Cfg
+    Test-PathShims $Cfg
     Test-SshMcpJunction $Cfg
     Test-SshMcpRegistration $Cfg
     Test-McpSync $Cfg
@@ -2351,7 +2436,7 @@ if (-not $Quiet) {
     Write-Host ("Expected skills: {0} | Agents: {1} | Fix: {2} | FixHardlink: {3}" -f $expected.Count, $agentsChecked, ($(if ($Fix) { 'YES' } else { 'NO' })), ($(if ($FixHardlink) { 'YES' } else { 'NO' })))
     Write-Host ""
     if ($Issues.Count -eq 0) {
-        Write-Host "ALL GREEN: links / dangling / hardlink group / manual copies / frontmatter / README / redline / ssh-mcp all pass" -ForegroundColor Green
+        Write-Host "ALL GREEN: links / dangling / hardlink group / manual copies / path shims / frontmatter / README / redline / ssh-mcp all pass" -ForegroundColor Green
     } else {
         foreach ($iss in ($Issues | Sort-Object Agent, Type)) {
             $color = if ($iss.Level -eq 'ERROR') { 'Red' } else { 'Yellow' }

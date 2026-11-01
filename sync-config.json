@@ -293,6 +293,27 @@
       }
     }
   },
+  "pathShims": {
+    "enabled": true,
+    "binDir": "%USERPROFILE%\\.local\\bin",
+    "items": [
+      {
+        "name": "mvninfo.cmd",
+        "target": "F:\\idea-workspase-skills\\dev-env-upgrade\\scripts\\mvninfo.cmd",
+        "what": "Maven 配置速查"
+      },
+      {
+        "name": "envcheck.cmd",
+        "target": "F:\\idea-workspase-skills\\dev-env-upgrade\\scripts\\envcheck.cmd",
+        "what": "开发环境体检"
+      },
+      {
+        "name": "fsend.cmd",
+        "target": "F:\\idea-workspase-skills\\ssh-transfer\\scripts\\fsend.cmd",
+        "what": "服务器传文件（scp 流式）"
+      }
+    ]
+  },
   "readme": {
     "enabled": true,
     "path": "F:\\idea-workspase-skills\\README.md",
