@@ -100,15 +100,48 @@ function Append-NoBomUtf8 {
 
 # ---------- skill discovery (truth = repo SKILL.md frontmatter) ----------
 
+function Get-SkillFileList {
+    # Get-ChildItem -Recurse does NOT descend into junctions, but the agents do: a skill
+    # dir junctioned to a cloned upstream (vendored copies) is visible to every end and
+    # invisible to this guard. Walk the tree ourselves and follow reparse points, with a
+    # real-path cycle guard and a depth cap, so the guard sees what the ends see.
+    param([string]$Root, [string[]]$ExcludeDirs)
+    $skip = @{}
+    foreach ($d in $ExcludeDirs) { if ($d) { $skip[$d.ToLowerInvariant()] = $true } }
+    $files = New-Object System.Collections.Generic.List[object]
+    $queue = New-Object System.Collections.Generic.Queue[object]
+    $queue.Enqueue(@{ Path = $Root; Depth = 0 })
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    while ($queue.Count -gt 0) {
+        $cur = $queue.Dequeue()
+        if ($cur.Depth -gt 12) { continue }
+        $key = $cur.Path
+        try {
+            $item = Get-Item -LiteralPath $cur.Path -Force
+            if ($item.Target) { $key = [string]$item.Target }
+        } catch { continue }
+        if (-not $seen.Add($key)) { continue }
+        $children = @()
+        try { $children = @(Get-ChildItem -LiteralPath $cur.Path -Force) } catch { continue }
+        foreach ($child in $children) {
+            if ($child.PSIsContainer) {
+                if ($child.Name -eq '.git') { continue }
+                if ($skip.ContainsKey($child.Name.ToLowerInvariant())) { continue }
+                $queue.Enqueue(@{ Path = $child.FullName; Depth = $cur.Depth + 1 })
+            } elseif ($child.Name -eq 'SKILL.md') {
+                $files.Add($child)
+            }
+        }
+    }
+    return $files
+}
+
 function Find-ExpectedSkills {
     param([string]$Repo, [string[]]$ExcludeDirs)
-    $escaped = ($ExcludeDirs | ForEach-Object { [regex]::Escape($_) }) -join '|'
-    $excludeRegex = '\\(' + $escaped + ')\\'
     $expected = @{}
     $frontmatterIssues = @()
 
-    Get-ChildItem -LiteralPath $Repo -Recurse -Filter 'SKILL.md' -Force |
-        Where-Object { $_.FullName -notmatch $excludeRegex } |
+    Get-SkillFileList -Root $Repo -ExcludeDirs $ExcludeDirs |
         ForEach-Object {
             $file = $_.FullName
             $lines = Get-Content -LiteralPath $file -Encoding UTF8
@@ -747,8 +780,20 @@ function Test-SshViaGateway {
     param([object]$Cfg)
     $reg = $Cfg.registration
     $gwCfg = 'C:\ProgramData\mcp-gateway\ssh-mcp-config.toml'
-    if (-not (Test-Path -LiteralPath $gwCfg)) {
+    # ACL keeps this file to SYSTEM + Administrators: a non-elevated shell cannot even
+    # probe it (Test-Path throws UnauthorizedAccess). That is an access limit, not a
+    # missing file - report it as WARN and keep running. Anything else used to abort the
+    # whole run here, so checks 5/7/8/14 never executed and every report said PASS.
+    $gwState = 'missing'
+    try {
+        if (Test-Path -LiteralPath $gwCfg) { $gwState = 'ok' }
+    } catch {
+        $gwState = 'denied'
+    }
+    if ($gwState -eq 'missing') {
         Add-Issue 'ssh-mcp' 'ERROR' 'SshGatewayConfigMissing' "网关专用 ssh 配置不存在：$gwCfg（跑 mcp-gateway\tools\sync-ssh-config.ps1 从客户端那份同步）" $false
+    } elseif ($gwState -eq 'denied') {
+        Add-Issue 'ssh-mcp' 'WARN' 'SshGatewayConfigDenied' "非提权 shell 读不到 $gwCfg（ACL 只留 SYSTEM/Administrators），本项跳过；提权复跑才是完整结论" $false
     }
     foreach ($prop in $reg.ends.PSObject.Properties) {
         $endName = $prop.Name
