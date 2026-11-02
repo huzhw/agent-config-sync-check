@@ -168,16 +168,22 @@ ssh-mcp 已并入统一 MCP 网关（日报管家托管，`127.0.0.1:18800`）�
 - **各 skill 自身** `README.md`：固定七段模板（见上架流程第 2 步），面向 GitHub 读者
 - **互链**：每个 README 的「相关技能」列表是全量技能的 GitHub 链接（不含自己）；新增技能时回填所有旧 README（上架流程第 5 步）
 
-  当前标准列表：
+  当前标准列表（与 `sync-config.json` 的 `relatedSkills` + `githubRepos` 逐字一致；改描述先改配置）：
   ```markdown
   - [agent-config-sync-check](https://github.com/huzhw/agent-config-sync-check)：八端同步守卫：链接/硬链接/README 同步检查与修复
   - [git-commit](https://github.com/huzhw/git-commit-skill)：Git 提交规范
-  - [daily-record-gitlab-md](https://github.com/huzhw/daily-record-gitlab-md-skill)：日报记录
-  - [daily-merge-gitlab-excel](https://github.com/huzhw/daily-merge-gitlab-excel-skill)：日报合并
+  - [daily-record-gitlab-md](https://github.com/huzhw/daily-record-gitlab-md-skill)：日报记录（第一步）
+  - [daily-merge-gitlab-excel](https://github.com/huzhw/daily-merge-gitlab-excel-skill)：日报合并（手动兜底，已由日报管家接管，不推荐）
   - [code-check](https://github.com/huzhw/code-check-skill)：增量代码隐患检查
-  - [deepseek-harness-settings-curator](https://github.com/huzhw/deepseek-harness-settings-curator)：DeepSeek Harness 模型配置梳理
   - [deepseek-harness-plugin-doctor](https://github.com/huzhw/deepseek-harness-plugin-doctor)：DeepSeek Harness 插件与升级体检医生
+  - [deepseek-harness-settings-curator](https://github.com/huzhw/deepseek-harness-settings-curator)：DeepSeek Harness 模型配置梳理
   - [reread-rules](https://github.com/huzhw/reread-rules-skill)：重载 CLAUDE.md / AGENTS.md 规则
   - [coding-rules](https://github.com/huzhw/coding-rules)：编码规则库（独立仓库，非 skill）
+  - [dev-env-upgrade](https://github.com/huzhw/dev-env-upgrade)：开发环境升级医生：版本体检/最新版查询/安全升级
   - [daily-report-panel](https://github.com/huzhw/daily-report-panel)：日报管家（关联仓库，非 skill，自动合并/导出/发件）
+  - [prd](https://github.com/huzhw/prd-skill)：PRD 生成器（一句话需求→结构化需求文档）
+  - [ralph](https://github.com/huzhw/ralph-skill)：PRD 转 prd.json（Ralph 自主执行格式）
+  - [memory-ai-cleanup](https://github.com/huzhw/memory-ai-cleanup)：memory-ai 记录定期清理：删过期流水、摘索引死链、清 tmp 残留
+  - [ssh-transfer](https://github.com/huzhw/ssh-transfer)：服务器传文件走命令行（scp/sftp 流式，字节不进模型上下文）
   ```
+  > 非 skill 仓库（`coding-rules`、`dsh-rm-quarantine`）与排除目录（`daily-report-panel`）的 README 不在互链检查的遍历范围内，改技能清单时人工回填。
