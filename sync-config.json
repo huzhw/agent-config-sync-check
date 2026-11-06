@@ -346,7 +346,8 @@
     "coding-rules": "coding-rules",
     "prd": "prd-skill",
     "ralph": "ralph-skill",
-    "ssh-transfer": "ssh-transfer"
+    "ssh-transfer": "ssh-transfer",
+    "legacy-audit": "legacy-audit"
   },
   "repoRoots": {
     "git-commit": "F:\\idea-workspase-skills\\claude-git-commit-skill"
@@ -366,7 +367,8 @@
     "coding-rules": "编码规则库（独立仓库，非 skill）",
     "prd": "PRD 生成器（一句话需求→结构化需求文档）",
     "ralph": "PRD 转 prd.json（Ralph 自主执行格式）",
-    "ssh-transfer": "服务器传文件走命令行（scp/sftp 流式，字节不进模型上下文）"
+    "ssh-transfer": "服务器传文件走命令行（scp/sftp 流式，字节不进模型上下文）",
+    "legacy-audit": "屎山体检：八套静态分析工具级联扫多仓，出新增技术债清单"
   },
   "redlineDirs": [
     "coding-rules"
